@@ -1387,7 +1387,7 @@ int Hermes::rhs(BoutReal t) {
     }
   }
   sound_speed.applyBoundary("neumann");
-  
+
   //////////////////////////////////////////////////////////////
   // Calculate electrostatic potential phi
   //
@@ -1414,7 +1414,6 @@ int Hermes::rhs(BoutReal t) {
       if (phi_boundary_last_update < 0.0) {
         // First time this has been called.
         phi_boundary_last_update = t;
-        
       } else if (t > phi_boundary_last_update) {
         // Only update if time has advanced
         // Uses an exponential decay of the weighting of the value in the boundary
