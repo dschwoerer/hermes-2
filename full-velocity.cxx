@@ -79,7 +79,7 @@ FullVelocity::FullVelocity(Solver *solver, Mesh *mesh, Options &options)
   Txz.allocate();
   Tyr.allocate();
   Tyz.allocate();
-  
+
   for (int i = 0; i < mesh->LocalNx; i++)
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
       // Central differencing of coordinates
@@ -158,7 +158,7 @@ FullVelocity::FullVelocity(Solver *solver, Mesh *mesh, Options &options)
 
 void FullVelocity::update(const Field3D &Ne, const Field3D &Te,
                           const Field3D &Ti, const Field3D &Vi) {
-  
+
   mesh->communicate(Nn2D, Vn2D, Pn2D);
 
   Coordinates *coord = mesh->getCoordinates();
@@ -167,7 +167,7 @@ void FullVelocity::update(const Field3D &Ne, const Field3D &Te,
   Field2D J_2D = DC(coord->J);
   Field2D g_22_2D = DC(coord->g_22);
   Field2D Bxy2D = DC(coord->Bxy);
-  
+
   // Navier-Stokes for axisymmetric neutral gas profiles
   // Nn2D, Pn2D and Tn2D are unfloored
   Tn2D = Pn2D / Nn2D;
@@ -192,20 +192,24 @@ void FullVelocity::update(const Field3D &Ne, const Field3D &Te,
          idwn.next()) {
       for (int k = 0; k < mesh->LocalNz; k++) {
 
-	if (Vn2D.y(idwn.ind, mesh->ystart, k) < 0.0) {
-	  // Flowing out of domain
-	  Vn2D.y(idwn.ind, mesh->ystart - 1, k) = Vn2D.y(idwn.ind, mesh->ystart, k);
-	} else {
-	  // Flowing into domain
-	  Vn2D.y(idwn.ind, mesh->ystart - 1, k) = -Vn2D.y(idwn.ind, mesh->ystart, k);
-	}
-	// Neumann boundary condition on X and Z components
-	Vn2D.x(idwn.ind, mesh->ystart - 1, k) = Vn2D.x(idwn.ind, mesh->ystart, k);
-	Vn2D.z(idwn.ind, mesh->ystart - 1, k) = Vn2D.z(idwn.ind, mesh->ystart, k);
-	
-	// Neumann conditions on density and pressure
-	Nn2D(idwn.ind, mesh->ystart - 1, k) = Nn2D(idwn.ind, mesh->ystart, k);
-	Pn2D(idwn.ind, mesh->ystart - 1, k) = Pn2D(idwn.ind, mesh->ystart, k);
+        if (Vn2D.y(idwn.ind, mesh->ystart, k) < 0.0) {
+          // Flowing out of domain
+          Vn2D.y(idwn.ind, mesh->ystart - 1, k) =
+              Vn2D.y(idwn.ind, mesh->ystart, k);
+        } else {
+          // Flowing into domain
+          Vn2D.y(idwn.ind, mesh->ystart - 1, k) =
+              -Vn2D.y(idwn.ind, mesh->ystart, k);
+        }
+        // Neumann boundary condition on X and Z components
+        Vn2D.x(idwn.ind, mesh->ystart - 1, k) =
+            Vn2D.x(idwn.ind, mesh->ystart, k);
+        Vn2D.z(idwn.ind, mesh->ystart - 1, k) =
+            Vn2D.z(idwn.ind, mesh->ystart, k);
+
+        // Neumann conditions on density and pressure
+        Nn2D(idwn.ind, mesh->ystart - 1, k) = Nn2D(idwn.ind, mesh->ystart, k);
+        Pn2D(idwn.ind, mesh->ystart - 1, k) = Pn2D(idwn.ind, mesh->ystart, k);
       }
     }
   }
@@ -378,5 +382,5 @@ void FullVelocity::addMomentum(int x, int y, int z, BoutReal dnvdt) {
   BoutReal J = coord->J(x, y, z);
   BoutReal Bxy = coord->Bxy(x, y, z);
 
-  ddt(Vn2D.y)(x, y, z) += dnvdt * (J * Bxy) / Nn2D(x, y); 
+  ddt(Vn2D.y)(x, y, z) += dnvdt * (J * Bxy) / Nn2D(x, y);
 }

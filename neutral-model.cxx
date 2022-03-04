@@ -15,7 +15,7 @@ using bout::globals::mesh;
 NeutralModel *NeutralModel::create(Solver *solver, Mesh *mesh,
                                    Options &options) {
   // Decide which neutral model to use
-  std::string type  = options["type"].withDefault<std::string>("none");
+  std::string type = options["type"].withDefault<std::string>("none");
   options["bulk"].setConditionallyUsed();
 
   if (type == "none") {
@@ -107,8 +107,8 @@ void NeutralModel::neutral_rates(
 
         // Jacobian (Cross-sectional area)
         BoutReal J_C = coord->J(i, j, k),
-	  J_L = 0.5 * (coord->J(i, j - 1, k) + coord->J(i, j, k)),
-	  J_R = 0.5 * (coord->J(i, j, k) + coord->J(i, j + 1, k));
+                 J_L = 0.5 * (coord->J(i, j - 1, k) + coord->J(i, j, k)),
+                 J_R = 0.5 * (coord->J(i, j, k) + coord->J(i, j + 1, k));
 
         ///////////////////////////////////////////
         // Charge exchange
@@ -123,10 +123,11 @@ void NeutralModel::neutral_rates(
         // Power transfer from plasma to neutrals
         // Factor of 3/2 to convert temperature to energy
 
-        Qi(i, j, k) = (3. / 2) * (J_L * (Ti_L - Tn_L) * R_cx_L +
-                                  4. * J_C * (Ti_C - Tn_C) * R_cx_C +
-                                  J_R * (Ti_R - Tn_R) * R_cx_R) /
-                      (6. * J_C);
+        Qi(i, j, k) =
+            (3. / 2) *
+            (J_L * (Ti_L - Tn_L) * R_cx_L + 4. * J_C * (Ti_C - Tn_C) * R_cx_C +
+             J_R * (Ti_R - Tn_R) * R_cx_R) /
+            (6. * J_C);
 
         // Plasma-neutral friction
         F(i, j, k) =

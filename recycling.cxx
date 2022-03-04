@@ -5,7 +5,7 @@
 
 using bout::globals::mesh;
 
-NeutralRecycling::NeutralRecycling(Solver*, Mesh *mesh, Options &options)
+NeutralRecycling::NeutralRecycling(Solver *, Mesh *mesh, Options &options)
     : NeutralModel(options) {
   OPTION(options, Lmax, 1.0);     // Maximum mean free path [m]
   OPTION(options, frecycle, 0.9); // Recycling fraction
@@ -79,12 +79,14 @@ void NeutralRecycling::update(const Field3D &Ne, const Field3D &Te,
           (Vi(i, mesh->yend, k) + Vi(i, mesh->yend + 1, k)); // [d^-2][t^-1]
 
       // number of particles lost per dt (flux out times perp volume) [t^-1]
-      nlost = bcast_lasty(fluxout * 0.5 *
-                          (coord->J(i, mesh->yend, k) * coord->dx(i, mesh->yend, k) *
-			   coord->dz(i, mesh->yend, k) / sqrt(coord->g_22(i, mesh->yend, k)) +
-                           coord->J(i, mesh->yend + 1, k) *
-			   coord->dx(i, mesh->yend + 1, k) * coord->dz(i, mesh->yend, k) /
-			   sqrt(coord->g_22(i, mesh->yend + 1, k))));
+      nlost = bcast_lasty(
+          fluxout * 0.5 *
+          (coord->J(i, mesh->yend, k) * coord->dx(i, mesh->yend, k) *
+               coord->dz(i, mesh->yend, k) /
+               sqrt(coord->g_22(i, mesh->yend, k)) +
+           coord->J(i, mesh->yend + 1, k) * coord->dx(i, mesh->yend + 1, k) *
+               coord->dz(i, mesh->yend, k) /
+               sqrt(coord->g_22(i, mesh->yend + 1, k))));
 
       // Integrate ionization rate over volume to get volume loss rate (simple
       // integration using trap rule)
@@ -92,8 +94,8 @@ void NeutralRecycling::update(const Field3D &Ne, const Field3D &Te,
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
         sigma_iz = hydrogen.ionisation(Te(i, j, k) * Tnorm) * Nnorm /
                    Fnorm; // ionization rate [d^3]/[t]
-        BoutReal dV = coord->J(i, j, k) * coord->dx(i, j, k) * coord->dy(i, j, k) *
-	  coord->dz (i, j, k); // volume element
+        BoutReal dV = coord->J(i, j, k) * coord->dx(i, j, k) *
+                      coord->dy(i, j, k) * coord->dz(i, j, k); // volume element
         nnexp += Nelim(i, j, k) * sigma_iz * exp(-lambda_int(i, j, k)) *
                  dV; // full integral of density source [d^3]/[t]
       }
@@ -180,7 +182,7 @@ Field2D NeutralRecycling::CumSumY2D(const Field2D &f, bool reverse) {
       }
       // Calculate sum
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
-        result(i,j) = result(i, j - 1) + f(i, j);
+        result(i, j) = result(i, j - 1) + f(i, j);
       }
       // Send the value at yend to the next processor.
       mesh->sendYOutIndest(&result(i, mesh->yend), 1, mesh->LocalNz * i);
@@ -200,8 +202,9 @@ Field3D NeutralRecycling::CumSumY3D(const Field3D &f, bool reverse) {
       for (int i = mesh->xstart; i <= mesh->xend; i++) {
         // All but last processor receive
         if (!mesh->lastY()) {
-          mesh->wait(mesh->irecvYOutOutdest(&result(i, mesh->yend + 1, k), 1,
-                                            mesh->LocalNx * i + mesh->LocalNz * k));
+          mesh->wait(
+              mesh->irecvYOutOutdest(&result(i, mesh->yend + 1, k), 1,
+                                     mesh->LocalNx * i + mesh->LocalNz * k));
         }
         // Calculate sum (reversed)
         for (int j = mesh->yend; j >= mesh->ystart; j--) {
@@ -217,8 +220,9 @@ Field3D NeutralRecycling::CumSumY3D(const Field3D &f, bool reverse) {
       for (int i = mesh->xstart; i <= mesh->xend; i++) {
         // All but first processor receive
         if (!mesh->firstY()) {
-          mesh->wait(mesh->irecvYInIndest(&result(i, mesh->ystart - 1, k), 1,
-                                          mesh->LocalNx * i + mesh->LocalNz * k));
+          mesh->wait(
+              mesh->irecvYInIndest(&result(i, mesh->ystart - 1, k), 1,
+                                   mesh->LocalNx * i + mesh->LocalNz * k));
         }
         // Calculate sum
         for (int j = mesh->ystart; j <= mesh->yend; j++) {

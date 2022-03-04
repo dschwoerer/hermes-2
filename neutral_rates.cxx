@@ -37,7 +37,7 @@ void Hermes::neutral_rates(const Field3D &Ne, const Field3D &Te,
                            Field3D &Riz, Field3D &Rrc, Field3D &Rcx) { // Rates
 
   // Allocate output fields
-  
+
   S = 0.0;
   F = 0.0;
   Q = 0.0;
@@ -110,10 +110,11 @@ void Hermes::neutral_rates(const Field3D &Ne, const Field3D &Te,
         // Power transfer from plasma to neutrals
         // Factor of 3/2 to convert temperature to energy
 
-        Q(i, j, k) = (3. / 2) * (J_L * (Te_L - Tn_L) * R_cx_L +
-                                 4. * J_C * (Te_C - Tn_C) * R_cx_C +
-                                 J_R * (Te_R - Tn_R) * R_cx_R) /
-                     (6. * J_C);
+        Q(i, j, k) =
+            (3. / 2) *
+            (J_L * (Te_L - Tn_L) * R_cx_L + 4. * J_C * (Te_C - Tn_C) * R_cx_C +
+             J_R * (Te_R - Tn_R) * R_cx_R) /
+            (6. * J_C);
 
         // Plasma-neutral friction
         F(i, j, k) =
