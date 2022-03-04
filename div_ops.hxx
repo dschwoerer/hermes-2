@@ -1,6 +1,6 @@
 /*
   Finite volume discretisations of divergence operators
- 
+
   ***********
 
     Copyright B.Dudson, J.Leddy, University of York, September 2016
@@ -20,7 +20,7 @@
 
     You should have received a copy of the GNU General Public License
     along with Hermes.  If not, see <http://www.gnu.org/licenses/>.
-  
+
  */
 
 #ifndef __DIV_OPS_H__
@@ -31,21 +31,24 @@
 
 /*!
  * Diffusion in index space
- * 
+ *
  * Similar to using Div_par_diffusion(SQ(mesh->dy)*mesh->g_22, f)
  *
  * @param[in] The field to be differentiated
  * @param[in] bndry_flux  Are fluxes through the boundary calculated?
  */
-const Field3D Div_par_diffusion_index(const Field3D &f, bool bndry_flux=true);
+const Field3D Div_par_diffusion_index(const Field3D &f, bool bndry_flux = true);
 
-const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f, bool bndry_flux=true, bool poloidal=false, bool positive=false);
+const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
+                                    bool bndry_flux = true,
+                                    bool poloidal = false,
+                                    bool positive = false);
 
-const Field3D Div_Perp_Lap_FV_Index(const Field3D &a, const Field3D &f, bool xflux);
-
+const Field3D Div_Perp_Lap_FV_Index(const Field3D &a, const Field3D &f,
+                                    bool xflux);
 
 // 4th-order flux conserving term, in index space
-const Field3D D4DX4_FV_Index(const Field3D &f, bool bndry_flux=false);
+const Field3D D4DX4_FV_Index(const Field3D &f, bool bndry_flux = false);
 
 // 4th order Z derivative in index space
 const Field3D D4DZ4_Index(const Field3D &f);
