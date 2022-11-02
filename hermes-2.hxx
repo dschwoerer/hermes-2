@@ -65,6 +65,9 @@ private:
   Field3D Ve, Vi, Jpar;  // Electron and ion parallel velocities
   Field3D psi;        // Electromagnetic potential (-A_||)
   Field3D phi;        // Electrostatic potential
+  Field3D a;
+  Field3D b;
+  Field3D d;
   
   // Limited variables
   Field3D Telim, Tilim;
@@ -102,6 +105,7 @@ private:
   bool evolve_te;       // Evolve electron temperature?
   bool evolve_ti;       // Evolve ion temperature?
   bool evolve_vort;     // Evolve vorticity?
+  bool evolve_ni;       // Evolve ion density instead?
   
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
@@ -253,7 +257,7 @@ private:
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
   //Laplacian *aparSolver;
   // LaplaceXZ *aparSolver;
-  std::unique_ptr<LaplaceXZ> aparSolver{nullptr};
+  std::unique_ptr<Laplacian> aparSolver{nullptr};
 
   // std::unique_ptr<LaplaceXY> aparXY{nullptr};
   LaplaceXY *aparXY;    // Solves n=0 component
@@ -275,6 +279,10 @@ private:
   std::unique_ptr<LaplaceXZ> newSolver{nullptr}; // New Laplacian in X-Z
 
 
+  bool relaxation;
+  Field3D phi_1;
+  BoutReal lambda_0,lambda_2;
+  
   // Mesh quantities
   Coordinates::FieldMetric B12, B32, B42;
 
