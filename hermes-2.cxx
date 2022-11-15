@@ -1650,9 +1650,8 @@ int Hermes::rhs(BoutReal t) {
 	  }
         }
         // Hot ion term in vorticity
-	mesh->communicate(phi);
-	phi.applyParallelBoundary("parallel_neumann");
-        phi = sub_all(phi, Pi);
+	phi -= Pi;
+
       } else {
         ////////////////////////////////////////////
         // Non-Boussinesq
@@ -1660,7 +1659,12 @@ int Hermes::rhs(BoutReal t) {
         throw BoutException("Non-Boussinesq not implemented yet");
       }
     }
+    phi.applyBoundary(t);
+    //#warning no parallel phi boundaries needed?
+    mesh->communicate(phi);
+    phi.applyParallelBoundary("parallel_neumann");
   }
+
 
   //////////////////////////////////////////////////////////////
   // Calculate perturbed magnetic field psi
