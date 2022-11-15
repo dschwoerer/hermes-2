@@ -1704,10 +1704,11 @@ int Hermes::rhs(BoutReal t) {
         Ve.applyBoundary(t);
         mesh->communicate(Ve, psi);
         Ve.applyParallelBoundary("parallel_neumann");
+	psi.applyParallelBoundary("parallel_neumann");
 
         Jpar = mul_all(Ne, sub_all(Vi, Ve));
-        mesh->communicate(Jpar);
-        Jpar.applyParallelBoundary("parallel_neumann");
+	//mesh->communicate(Jpar);
+	//Jpar.applyParallelBoundary("parallel_neumann");
 	// Jpar.applyBoundary();
       } else {
         // Zero electron mass
@@ -1718,6 +1719,7 @@ int Hermes::rhs(BoutReal t) {
 	if(fci_transform){
           Field3D one;
           set_all(one, 1.0);
+          checkData(psi);
           Jpar = FV::Div_a_Laplace_perp(one, psi);
         } else {
 	  Jpar = FV::Div_a_Laplace_perp(1.0, psi);
@@ -1742,11 +1744,13 @@ int Hermes::rhs(BoutReal t) {
         // mesh->communicate(phi,Pe);
 
 	// tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
-	Field3D Te32= pow(Te,1.5);
-	mesh->communicate(Te32, Ne, phi, Pe, Vi);
+	Field3D Te32= pow_all(Te,1.5);
+	// mesh->communicate(Te32, Ne, phi, Pe, Vi);
 	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-	nu = resistivity_multiply * (1.96 * tau_e * mi_me);
+	nu = mul_all(tau_e, resistivity_multiply * 1.96 * mi_me);
+        // We probably don't need this if we use mul_all above ...
 	mesh->communicate(nu);
+	nu.applyParallelBoundary("parallel_neumann");
 
 	Field3D gparpe = Grad_par(Pe);
 	Field3D gparphi = Grad_par(phi);
@@ -1765,8 +1769,11 @@ int Hermes::rhs(BoutReal t) {
       Ve.applyBoundary(t);
       // Communicate auxilliary variables
       mesh->communicate(Ve);
+      Ve.applyParallelBoundary("parallel_neumann");
       Field3D neve = mul_all(Ne,Ve);
       mesh->communicate(NVi,neve);
+      NVi.applyParallelBoundary("parallel_neumann");
+      neve.applyParallelBoundary("parallel_neumann");
       Jpar = sub_all(NVi, neve);
 
     }
@@ -2552,7 +2559,9 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-  if(currents){ nu.applyBoundary(t); }
+  if (currents) {
+    nu.applyBoundary(t);
+  }
 
   if (ion_viscosity) {
     ///////////////////////////////////////////////////////////
@@ -2657,10 +2666,12 @@ int Hermes::rhs(BoutReal t) {
     // Diamagnetic drift, formulated as a magnetic drift
     // i.e Grad-B + curvature drift
     if (!evolve_ni) {
-      mesh->communicate(Pe);
+      //mesh->communicate(Pe);
+      check_all(Pe);
       ddt(Ne) -= fci_curvature(Pe);
     } else {
-      mesh->communicate(Pi);
+      check_all(Pi);
+      //mesh->communicate(Pi);
       ddt(Ne) += fci_curvature(Pi);
     }
   }
