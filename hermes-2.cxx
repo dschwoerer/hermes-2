@@ -920,7 +920,7 @@ int Hermes::init(bool restarting) {
     logBxy.applyBoundary("neumann");
     mesh->communicate(logBxy);
     logBxy.applyParallelBoundary("parallel_neumann");
-    printf("Setting from log");
+    output_info.write("Setting Bxy from logBxy\n");
     coord->Bxy = exp_all(logBxy);
 
     bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
