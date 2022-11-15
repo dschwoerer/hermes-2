@@ -285,6 +285,11 @@ void alloc_all(Field3D &f) {
     result[i] = op(result[i], _get(b, i));                                     \
     yup(result, i) = op(yup(result, i), yup(b, i));                            \
     ydown(result, i) = op(ydown(result, i), ydown(b, i));                      \
+  }                                                                            \
+  template <class B, class C> void name##_alli(Field3D &result, const B &b, const C &c, Ind3D i) { \
+    result[i] = op(result[i], _get(b, i) * _get(c, i));			\
+    yup(result, i) = op(yup(result, i), yup(b, i) * yup(c, i));		\
+    ydown(result, i) = op(ydown(result, i), ydown(b, i) * ydown(c, i));	\
   }
 
 DO_ALL(floor, floor)
@@ -1356,25 +1361,20 @@ int Hermes::rhs(BoutReal t) {
       copy_all(Pe, Ne, i); // Fixed electron temperature
     }
 
+    floor_alli(Pe, Ne, 3 / Tnorm, i);
+
     div_all(Te, Pe, Ne, i);
-    // ASSERT0(Te[i] > 1e-10);
-    /// printf("%f\n", Te[i]);
+
     div_all(Vi, NVi, Ne, i);
 
-    floor_all(Te, 0.1 / Tnorm, i);
-    // ASSERT0(Te[i] > 1e-10);
-
-    mul_all(Pe, Te, Ne, i);
+    div_all(Vi, NVi, Ne, i);
 
     if (!evolve_ti) {
       copy_all(Pi, Ne, i); // Fixed ion temperature
     }
 
+    floor_alli(Pi, Ne, 0.1 / Tnorm, i);
     div_all(Ti, Pi, Ne, i);
-    floor_all(Ti, 0.1 / Tnorm, i);
-    mul_all(Pi, Ti, Ne, i);
-    div_all(Te, Pe, Ne, i);
-    // ASSERT0(Te[i] > 1e-10);
 
     sound_speed[i] = scale_num_cs * sqrt(Te[i] + Ti[i] * (5. / 3));
     if (floor_num_cs > 0.0) {
