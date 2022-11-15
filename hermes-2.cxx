@@ -300,6 +300,7 @@ DO_ALL(pow, pow)
     setRegions(result);                                                        \
     return result;                                                             \
   }                                                                            \
+  BoutReal name##_all(BoutReal a, BoutReal b) { return a op b; }               \
   Field3D name##_all(const Field3D &a, const Field3D &b) {                     \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
