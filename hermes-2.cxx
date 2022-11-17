@@ -585,6 +585,9 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
 
+  OPTION(optsc, TLim, 0.1);
+  TLim /= Tnorm;
+
   output.write("Normalisation Te={:e}, Ne={:e}, B={:e}\n", Tnorm, Nnorm, Bnorm);
   SAVE_ONCE(Tnorm, Nnorm, Bnorm, AA); // Save
 
@@ -1330,11 +1333,9 @@ int Hermes::rhs(BoutReal t) {
       copy_all(Pe, Ne, i); // Fixed electron temperature
     }
 
-    floor_alli(Pe, Ne, 3 / Tnorm, i);
+    floor_alli(Pe, Ne, TLim, i);
 
     div_all(Te, Pe, Ne, i);
-
-    div_all(Vi, NVi, Ne, i);
 
     div_all(Vi, NVi, Ne, i);
 
@@ -1342,7 +1343,7 @@ int Hermes::rhs(BoutReal t) {
       copy_all(Pi, Ne, i); // Fixed ion temperature
     }
 
-    floor_alli(Pi, Ne, 0.1 / Tnorm, i);
+    floor_alli(Pi, Ne, TLim, i);
     div_all(Ti, Pi, Ne, i);
 
     sound_speed[i] = scale_num_cs * sqrt(Te[i] + Ti[i] * (5. / 3));
