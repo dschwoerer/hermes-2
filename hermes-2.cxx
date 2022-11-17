@@ -1188,9 +1188,6 @@ int Hermes::init(bool restarting) {
   kappa_ipar = 0.0;
   Dn = 0.0;
 
-  SAVE_REPEAT(a,b,d);
-  SAVE_REPEAT(Te, Ti);
-  
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(Jpar); // Parallel current
@@ -1213,6 +1210,8 @@ int Hermes::init(bool restarting) {
 
     // Sources added to Ne, Pe and Pi equations
     SAVE_REPEAT(NeSource, PeSource, PiSource);
+
+    SAVE_REPEAT(a, b, d);
   }
 
   zero_all(phi);
