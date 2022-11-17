@@ -245,10 +245,10 @@ const BoutReal ydown(BoutReal f, Ind3D i) { return f; };
 // const BoutReal& ydown(const Field3D &f, Ind3D i) { return f.ydown()[i.ym()];
 // } BoutReal& yup(Field3D &f, Ind3D i) { return f.yup()[i.yp()]; } BoutReal&
 // ydown(Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
-const BoutReal &yup(const Field3D &f, Ind3D i) { return f.yup()[i]; }
-const BoutReal &ydown(const Field3D &f, Ind3D i) { return f.ydown()[i]; }
-BoutReal &yup(Field3D &f, Ind3D i) { return f.yup()[i]; }
-BoutReal &ydown(Field3D &f, Ind3D i) { return f.ydown()[i]; }
+const BoutReal &yup(const Field3D &f, Ind3D i) { return f.yup()[i.yp()]; }
+const BoutReal &ydown(const Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
+BoutReal &yup(Field3D &f, Ind3D i) { return f.yup()[i.yp()]; }
+BoutReal &ydown(Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
 const BoutReal &_get(const Field3D &f, Ind3D i) { return f[i]; }
 BoutReal &_get(Field3D &f, Ind3D i) { return f[i]; }
 BoutReal _get(BoutReal f, Ind3D i) { return f; };
@@ -277,7 +277,7 @@ void check_all(Field3D &f) {
   template <class A, class B> Field3D name##_all(const A &a, const B &b) {     \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
-    BOUT_FOR(i, result.getRegion("RGN_ALL")) { name##_all(result, a, b, i); }  \
+    BOUT_FOR(i, result.getRegion("RGN_NOY")) { name##_all(result, a, b, i); }  \
     setRegions(result);                                                        \
     return result;                                                             \
   }                                                                            \
@@ -306,43 +306,12 @@ DO_ALL(pow, pow)
   template <class A, class B> Field3D name##_all(const A &a, const B &b) {     \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
-    BOUT_FOR(i, result.getRegion("RGN_ALL")) { name##_all(result, a, b, i); }  \
-    checkData(result, "RGN_ALL");                                              \
+    BOUT_FOR(i, result.getRegion("RGN_NOY")) { name##_all(result, a, b, i); }  \
     setRegions(result);                                                        \
+    check_all(result);                                                         \
     return result;                                                             \
   }                                                                            \
   BoutReal name##_all(BoutReal a, BoutReal b) { return a op b; }               \
-  Field3D name##_all(const Field3D &a, const Field3D &b) {                     \
-    Field3D result;                                                            \
-    alloc_all(result);                                                         \
-    const int n = result.getNx() * result.getNy() * result.getNz();            \
-    GET_ALL(result);                                                           \
-    GET_ALL(a);                                                                \
-    GET_ALL(b);                                                                \
-    BOUT_OMP(omp parallel for simd)                                            \
-    for (int i = 0; i < n; ++i) {                                              \
-      resulta[i] = aa[i] op ba[i];                                             \
-      resultb[i] = ab[i] op bb[i];                                             \
-      resultc[i] = ac[i] op bc[i];                                             \
-    }                                                                          \
-    setRegions(result);                                                        \
-    return result;                                                             \
-  }                                                                            \
-  Field3D name##_all(const Field3D &a, BoutReal b) {                           \
-    Field3D result;                                                            \
-    alloc_all(result);                                                         \
-    const int n = result.getNx() * result.getNy() * result.getNz();            \
-    GET_ALL(result);                                                           \
-    GET_ALL(a);                                                                \
-    BOUT_OMP(omp parallel for simd)                                            \
-    for (int i = 0; i < n; ++i) {                                              \
-      resulta[i] = aa[i] op b;                                                 \
-      resultb[i] = ab[i] op b;                                                 \
-      resultc[i] = ac[i] op b;                                                 \
-    }                                                                          \
-    setRegions(result);                                                        \
-    return result;                                                             \
-  }                                                                            \
   template <class A, class B>                                                  \
   void name##_all(Field3D &result, const A &a, const B &b, Ind3D i) {          \
     result[i] = _get(a, i) op _get(b, i);                                      \
@@ -373,9 +342,9 @@ DO_ALL(-, sub)
   inline Field3D op##_all(const Field3D &a) {                                  \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
-    BOUT_FOR(i, result.getRegion("RGN_ALL")) { op##_all(result, a, i); }       \
-    checkData(result, "RGN_ALL");                                              \
+    BOUT_FOR(i, result.getRegion("RGN_NOY")) { op##_all(result, a, i); }       \
     setRegions(result);                                                        \
+    check_all(result);                                                         \
     return result;                                                             \
   }
 
@@ -389,10 +358,10 @@ DO_ALL(log)
 
 void set_all(Field3D &f, BoutReal val) {
   alloc_all(f);
-  BOUT_FOR(i, f.getRegion("RGN_ALL")) {
+  BOUT_FOR(i, f.getRegion("RGN_NOY")) {
     f[i] = val;
-    f.yup()[i] = val;
-    f.ydown()[i] = val;
+    f.yup()[i.yp()] = val;
+    f.ydown()[i.ym()] = val;
   }
 }
 void zero_all(Field3D &f) { set_all(f, 0); }
@@ -923,7 +892,7 @@ int Hermes::init(bool restarting) {
     output_info.write("Setting Bxy from logBxy\n");
     coord->Bxy = exp_all(logBxy);
 
-    bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
+    bout::checkPositive(coord->Bxy, "f", "RGN_NOY");
     bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     logB = log(Bxyz);
@@ -1353,7 +1322,7 @@ int Hermes::rhs(BoutReal t) {
   alloc_all(Vi);
   alloc_all(Pi);
   alloc_all(Pe);
-  BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+  BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
     // Field3D Ne = floor_all(Ne, 1e-5);
     floor_all(Ne, 1e-5, i);
 
