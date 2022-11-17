@@ -245,10 +245,10 @@ const BoutReal ydown(BoutReal f, Ind3D i) { return f; };
 // const BoutReal& ydown(const Field3D &f, Ind3D i) { return f.ydown()[i.ym()];
 // } BoutReal& yup(Field3D &f, Ind3D i) { return f.yup()[i.yp()]; } BoutReal&
 // ydown(Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
-const BoutReal &yup(const Field3D &f, Ind3D i) { return f.yup()[i]; }
-const BoutReal &ydown(const Field3D &f, Ind3D i) { return f.ydown()[i]; }
-BoutReal &yup(Field3D &f, Ind3D i) { return f.yup()[i]; }
-BoutReal &ydown(Field3D &f, Ind3D i) { return f.ydown()[i]; }
+const BoutReal &yup(const Field3D &f, Ind3D i) { return f.yup()[i.yp()]; }
+const BoutReal &ydown(const Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
+BoutReal &yup(Field3D &f, Ind3D i) { return f.yup()[i.yp()]; }
+BoutReal &ydown(Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
 const BoutReal &_get(const Field3D &f, Ind3D i) { return f[i]; }
 BoutReal &_get(Field3D &f, Ind3D i) { return f[i]; }
 BoutReal _get(BoutReal f, Ind3D i) { return f; };
@@ -262,6 +262,12 @@ void alloc_all(Field3D &f) {
   setRegions(f);
 }
 
+void check_all(Field3D &f) {
+  checkData(f);
+  checkData(f.yup());
+  checkData(f.ydown());
+}
+
 #define GET_ALL(name)                                                          \
   auto *name##a = &name[Ind3D(0)];                                             \
   auto *name##b = &name.yup()[Ind3D(0)];                                       \
@@ -271,7 +277,7 @@ void alloc_all(Field3D &f) {
   template <class A, class B> Field3D name##_all(const A &a, const B &b) {     \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
-    BOUT_FOR(i, result.getRegion("RGN_ALL")) { name##_all(result, a, b, i); }  \
+    BOUT_FOR(i, result.getRegion("RGN_NOY")) { name##_all(result, a, b, i); }  \
     setRegions(result);                                                        \
     return result;                                                             \
   }                                                                            \
@@ -285,6 +291,11 @@ void alloc_all(Field3D &f) {
     result[i] = op(result[i], _get(b, i));                                     \
     yup(result, i) = op(yup(result, i), yup(b, i));                            \
     ydown(result, i) = op(ydown(result, i), ydown(b, i));                      \
+  }                                                                            \
+  template <class B, class C> void name##_alli(Field3D &result, const B &b, const C &c, Ind3D i) { \
+    result[i] = op(result[i], _get(b, i) * _get(c, i));			\
+    yup(result, i) = op(yup(result, i), yup(b, i) * yup(c, i));		\
+    ydown(result, i) = op(ydown(result, i), ydown(b, i) * ydown(c, i));	\
   }
 
 DO_ALL(floor, floor)
@@ -295,42 +306,12 @@ DO_ALL(pow, pow)
   template <class A, class B> Field3D name##_all(const A &a, const B &b) {     \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
-    BOUT_FOR(i, result.getRegion("RGN_ALL")) { name##_all(result, a, b, i); }  \
-    checkData(result, "RGN_ALL");                                              \
+    BOUT_FOR(i, result.getRegion("RGN_NOY")) { name##_all(result, a, b, i); }  \
     setRegions(result);                                                        \
+    check_all(result);                                                         \
     return result;                                                             \
   }                                                                            \
-  Field3D name##_all(const Field3D &a, const Field3D &b) {                     \
-    Field3D result;                                                            \
-    alloc_all(result);                                                         \
-    const int n = result.getNx() * result.getNy() * result.getNz();            \
-    GET_ALL(result);                                                           \
-    GET_ALL(a);                                                                \
-    GET_ALL(b);                                                                \
-    BOUT_OMP(omp parallel for simd)                                            \
-    for (int i = 0; i < n; ++i) {                                              \
-      resulta[i] = aa[i] op ba[i];                                             \
-      resultb[i] = ab[i] op bb[i];                                             \
-      resultc[i] = ac[i] op bc[i];                                             \
-    }                                                                          \
-    setRegions(result);                                                        \
-    return result;                                                             \
-  }                                                                            \
-  Field3D name##_all(const Field3D &a, BoutReal b) {                           \
-    Field3D result;                                                            \
-    alloc_all(result);                                                         \
-    const int n = result.getNx() * result.getNy() * result.getNz();            \
-    GET_ALL(result);                                                           \
-    GET_ALL(a);                                                                \
-    BOUT_OMP(omp parallel for simd)                                            \
-    for (int i = 0; i < n; ++i) {                                              \
-      resulta[i] = aa[i] op b;                                                 \
-      resultb[i] = ab[i] op b;                                                 \
-      resultc[i] = ac[i] op b;                                                 \
-    }                                                                          \
-    setRegions(result);                                                        \
-    return result;                                                             \
-  }                                                                            \
+  BoutReal name##_all(BoutReal a, BoutReal b) { return a op b; }               \
   template <class A, class B>                                                  \
   void name##_all(Field3D &result, const A &a, const B &b, Ind3D i) {          \
     result[i] = _get(a, i) op _get(b, i);                                      \
@@ -361,9 +342,9 @@ DO_ALL(-, sub)
   inline Field3D op##_all(const Field3D &a) {                                  \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
-    BOUT_FOR(i, result.getRegion("RGN_ALL")) { op##_all(result, a, i); }       \
-    checkData(result, "RGN_ALL");                                              \
+    BOUT_FOR(i, result.getRegion("RGN_NOY")) { op##_all(result, a, i); }       \
     setRegions(result);                                                        \
+    check_all(result);                                                         \
     return result;                                                             \
   }
 
@@ -377,19 +358,13 @@ DO_ALL(log)
 
 void set_all(Field3D &f, BoutReal val) {
   alloc_all(f);
-  BOUT_FOR(i, f.getRegion("RGN_ALL")) {
+  BOUT_FOR(i, f.getRegion("RGN_NOY")) {
     f[i] = val;
-    f.yup()[i] = val;
-    f.ydown()[i] = val;
+    f.yup()[i.yp()] = val;
+    f.ydown()[i.ym()] = val;
   }
 }
 void zero_all(Field3D &f) { set_all(f, 0); }
-
-void check_all(Field3D &f) {
-  checkData(f);
-  checkData(f.yup());
-  checkData(f.ydown());
-}
 
 void ASSERT_CLOSE_ALL(const Field3D &a, const Field3D &b) {
   BOUT_FOR(i, a.getRegion("RGN_NOY")) {
@@ -610,6 +585,9 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
 
+  OPTION(optsc, TLim, 0.1);
+  TLim /= Tnorm;
+
   output.write("Normalisation Te={:e}, Ne={:e}, B={:e}\n", Tnorm, Nnorm, Bnorm);
   SAVE_ONCE(Tnorm, Nnorm, Bnorm, AA); // Save
 
@@ -641,28 +619,18 @@ int Hermes::init(bool restarting) {
     // Normalise
     anomalous_D /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous D_perp = {:e}\n", anomalous_D);
-    a_d3d = anomalous_D;
-    mesh->communicate(a_d3d);
-    a_d3d.yup() = anomalous_D;
-    a_d3d.ydown() = anomalous_D;
+    set_all(a_d3d, anomalous_D);
   }
   if (anomalous_chi > 0.0) {
     // Normalise
     anomalous_chi /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous chi_perp = {:e}\n", anomalous_chi);
-    a_chi3d = anomalous_chi;
-    mesh->communicate(a_chi3d);
-    a_chi3d.yup() = anomalous_D;
-    a_chi3d.ydown() = anomalous_D;
   }
   if (anomalous_nu > 0.0) {
     // Normalise
     anomalous_nu /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous nu_perp = {:e}\n", anomalous_nu);
-    a_nu3d = anomalous_nu;
-    mesh->communicate(a_nu3d);
-    a_nu3d.yup() = anomalous_D;
-    a_nu3d.ydown() = anomalous_D;
+    set_all(a_nu3d, anomalous_nu);
   }
 
   if (ramp_mesh) {
@@ -914,10 +882,10 @@ int Hermes::init(bool restarting) {
     logBxy.applyBoundary("neumann");
     mesh->communicate(logBxy);
     logBxy.applyParallelBoundary("parallel_neumann");
-    printf("Setting from log");
+    output_info.write("Setting Bxy from logBxy\n");
     coord->Bxy = exp_all(logBxy);
 
-    bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
+    bout::checkPositive(coord->Bxy, "f", "RGN_NOY");
     bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     logB = log(Bxyz);
@@ -1220,9 +1188,6 @@ int Hermes::init(bool restarting) {
   kappa_ipar = 0.0;
   Dn = 0.0;
 
-  SAVE_REPEAT(a,b,d);
-  SAVE_REPEAT(Te, Ti);
-  
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(Jpar); // Parallel current
@@ -1245,6 +1210,8 @@ int Hermes::init(bool restarting) {
 
     // Sources added to Ne, Pe and Pi equations
     SAVE_REPEAT(NeSource, PeSource, PiSource);
+
+    SAVE_REPEAT(a, b, d);
   }
 
   zero_all(phi);
@@ -1347,7 +1314,7 @@ int Hermes::rhs(BoutReal t) {
   alloc_all(Vi);
   alloc_all(Pi);
   alloc_all(Pe);
-  BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+  BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
     // Field3D Ne = floor_all(Ne, 1e-5);
     floor_all(Ne, 1e-5, i);
 
@@ -1355,25 +1322,18 @@ int Hermes::rhs(BoutReal t) {
       copy_all(Pe, Ne, i); // Fixed electron temperature
     }
 
+    floor_alli(Pe, Ne, TLim, i);
+
     div_all(Te, Pe, Ne, i);
-    // ASSERT0(Te[i] > 1e-10);
-    /// printf("%f\n", Te[i]);
+
     div_all(Vi, NVi, Ne, i);
-
-    floor_all(Te, 0.1 / Tnorm, i);
-    // ASSERT0(Te[i] > 1e-10);
-
-    mul_all(Pe, Te, Ne, i);
 
     if (!evolve_ti) {
       copy_all(Pi, Ne, i); // Fixed ion temperature
     }
 
+    floor_alli(Pi, Ne, TLim, i);
     div_all(Ti, Pi, Ne, i);
-    floor_all(Ti, 0.1 / Tnorm, i);
-    mul_all(Pi, Ti, Ne, i);
-    div_all(Te, Pe, Ne, i);
-    // ASSERT0(Te[i] > 1e-10);
 
     sound_speed[i] = scale_num_cs * sqrt(Te[i] + Ti[i] * (5. / 3));
     if (floor_num_cs > 0.0) {
@@ -1649,9 +1609,8 @@ int Hermes::rhs(BoutReal t) {
 	  }
         }
         // Hot ion term in vorticity
-	mesh->communicate(phi);
-	phi.applyParallelBoundary("parallel_neumann");
-        phi = sub_all(phi, Pi);
+	phi -= Pi;
+
       } else {
         ////////////////////////////////////////////
         // Non-Boussinesq
@@ -1659,7 +1618,12 @@ int Hermes::rhs(BoutReal t) {
         throw BoutException("Non-Boussinesq not implemented yet");
       }
     }
+    phi.applyBoundary(t);
+    //#warning no parallel phi boundaries needed?
+    mesh->communicate(phi);
+    phi.applyParallelBoundary("parallel_neumann");
   }
+
 
   //////////////////////////////////////////////////////////////
   // Calculate perturbed magnetic field psi
@@ -1699,10 +1663,11 @@ int Hermes::rhs(BoutReal t) {
         Ve.applyBoundary(t);
         mesh->communicate(Ve, psi);
         Ve.applyParallelBoundary("parallel_neumann");
+	psi.applyParallelBoundary("parallel_neumann");
 
         Jpar = mul_all(Ne, sub_all(Vi, Ve));
-        mesh->communicate(Jpar);
-        Jpar.applyParallelBoundary("parallel_neumann");
+	//mesh->communicate(Jpar);
+	//Jpar.applyParallelBoundary("parallel_neumann");
 	// Jpar.applyBoundary();
       } else {
         // Zero electron mass
@@ -1713,6 +1678,7 @@ int Hermes::rhs(BoutReal t) {
 	if(fci_transform){
           Field3D one;
           set_all(one, 1.0);
+          checkData(psi);
           Jpar = FV::Div_a_Laplace_perp(one, psi);
         } else {
 	  Jpar = FV::Div_a_Laplace_perp(1.0, psi);
@@ -1737,11 +1703,13 @@ int Hermes::rhs(BoutReal t) {
         // mesh->communicate(phi,Pe);
 
 	// tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
-	Field3D Te32= pow(Te,1.5);
-	mesh->communicate(Te32, Ne, phi, Pe, Vi);
+	Field3D Te32= pow_all(Te,1.5);
+	// mesh->communicate(Te32, Ne, phi, Pe, Vi);
 	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-	nu = resistivity_multiply * (1.96 * tau_e * mi_me);
+	nu = mul_all(tau_e, resistivity_multiply * 1.96 * mi_me);
+        // We probably don't need this if we use mul_all above ...
 	mesh->communicate(nu);
+	nu.applyParallelBoundary("parallel_neumann");
 
 	Field3D gparpe = Grad_par(Pe);
 	Field3D gparphi = Grad_par(phi);
@@ -1760,8 +1728,11 @@ int Hermes::rhs(BoutReal t) {
       Ve.applyBoundary(t);
       // Communicate auxilliary variables
       mesh->communicate(Ve);
+      Ve.applyParallelBoundary("parallel_neumann");
       Field3D neve = mul_all(Ne,Ve);
       mesh->communicate(NVi,neve);
+      NVi.applyParallelBoundary("parallel_neumann");
+      neve.applyParallelBoundary("parallel_neumann");
       Jpar = sub_all(NVi, neve);
 
     }
@@ -2547,7 +2518,9 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-  if(currents){ nu.applyBoundary(t); }
+  if (currents) {
+    nu.applyBoundary(t);
+  }
 
   if (ion_viscosity) {
     ///////////////////////////////////////////////////////////
@@ -2652,10 +2625,12 @@ int Hermes::rhs(BoutReal t) {
     // Diamagnetic drift, formulated as a magnetic drift
     // i.e Grad-B + curvature drift
     if (!evolve_ni) {
-      mesh->communicate(Pe);
+      //mesh->communicate(Pe);
+      check_all(Pe);
       ddt(Ne) -= fci_curvature(Pe);
     } else {
-      mesh->communicate(Pi);
+      check_all(Pi);
+      //mesh->communicate(Pi);
       ddt(Ne) += fci_curvature(Pi);
     }
   }
@@ -3128,11 +3103,11 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if ((anomalous_D > 0.0) && anomalous_D_nvi) {
-      ddt(NVi) += FV::Div_a_Laplace_perp(mul_all(Vi , a_d3d), Ne);
+      ddt(NVi) += FV::Div_a_Laplace_perp(mul_all(Vi , anomalous_D), Ne);
     }
     
     if (anomalous_nu > 0.0) {
-      ddt(NVi) += FV::Div_a_Laplace_perp(mul_all(Ne , a_nu3d), Vi);
+      ddt(NVi) += FV::Div_a_Laplace_perp(mul_all(Ne, anomalous_nu), Vi);
     }
     
     if (hyperpar > 0.0) {
@@ -3407,10 +3382,10 @@ int Hermes::rhs(BoutReal t) {
     // Anomalous diffusion
 
     if ((anomalous_D > 0.0) && anomalous_D_pepi) {
-      ddt(Pe) += FV::Div_a_Laplace_perp(mul_all(a_d3d , Te), Ne);
+      ddt(Pe) += FV::Div_a_Laplace_perp(mul_all(anomalous_D , Te), Ne);
     }
     if (anomalous_chi > 0.0) {
-      ddt(Pe) += (2. / 3) * FV::Div_a_Laplace_perp(mul_all(a_chi3d , Ne), Te);
+      ddt(Pe) += (2. / 3) * FV::Div_a_Laplace_perp(mul_all(anomalous_chi , Ne), Te);
     }
 
     //////////////////////
@@ -3640,11 +3615,11 @@ int Hermes::rhs(BoutReal t) {
     // Anomalous diffusion
 
     if ((anomalous_D > 0.0) && anomalous_D_pepi) {
-      ddt(Pi) += FV::Div_a_Laplace_perp(mul_all(a_d3d , Ti), Ne);
+      ddt(Pi) += FV::Div_a_Laplace_perp(mul_all(anomalous_D , Ti), Ne);
     }
 
     if (anomalous_chi > 0.0) {
-      ddt(Pi) += (2. / 3) * FV::Div_a_Laplace_perp(mul_all(a_chi3d , Ne), Ti);
+      ddt(Pi) += (2. / 3) * FV::Div_a_Laplace_perp(mul_all(anomalous_chi , Ne), Ti);
     }
 
     ///////////////////////////////////
