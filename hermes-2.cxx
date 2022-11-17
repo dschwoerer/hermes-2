@@ -262,6 +262,12 @@ void alloc_all(Field3D &f) {
   setRegions(f);
 }
 
+void check_all(Field3D &f) {
+  checkData(f);
+  checkData(f.yup());
+  checkData(f.ydown());
+}
+
 #define GET_ALL(name)                                                          \
   auto *name##a = &name[Ind3D(0)];                                             \
   auto *name##b = &name.yup()[Ind3D(0)];                                       \
@@ -390,12 +396,6 @@ void set_all(Field3D &f, BoutReal val) {
   }
 }
 void zero_all(Field3D &f) { set_all(f, 0); }
-
-void check_all(Field3D &f) {
-  checkData(f);
-  checkData(f.yup());
-  checkData(f.ydown());
-}
 
 void ASSERT_CLOSE_ALL(const Field3D &a, const Field3D &b) {
   BOUT_FOR(i, a.getRegion("RGN_NOY")) {
