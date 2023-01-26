@@ -285,6 +285,11 @@ void alloc_all(Field3D &f) {
     result[i] = op(result[i], _get(b, i));                                     \
     yup(result, i) = op(yup(result, i), yup(b, i));                            \
     ydown(result, i) = op(ydown(result, i), ydown(b, i));                      \
+  }                                                                            \
+  template <class B> void name##_all(Field3D &result, const B &b, const C &c, Ind3D i) { \
+    result[i] = op(result[i], _get(b, i) * _get(c, i));			\
+    yup(result, i) = op(yup(result, i), yup(b, i) * yup(c, i));		\
+    ydown(result, i) = op(ydown(result, i), ydown(b, i) * ydown(c, i));	\
   }
 
 DO_ALL(floor, floor)
@@ -300,6 +305,7 @@ DO_ALL(pow, pow)
     setRegions(result);                                                        \
     return result;                                                             \
   }                                                                            \
+  BoutReal name##_all(BoutReal a, BoutReal b) { return a op b; }               \
   Field3D name##_all(const Field3D &a, const Field3D &b) {                     \
     Field3D result;                                                            \
     alloc_all(result);                                                         \
