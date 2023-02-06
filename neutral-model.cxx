@@ -12,8 +12,8 @@
 
 using bout::globals::mesh;
 
-NeutralModel *NeutralModel::create(Solver *solver, Mesh *mesh,
-                                   Options &options) {
+NeutralModel *NeutralModel::create(Solver *solver, Mesh *mesh, Options &options,
+                                   bout::DataFileFacade &dump) {
   // Decide which neutral model to use
   std::string type = options["type"].withDefault<std::string>("none");
   options["bulk"].setConditionallyUsed();
@@ -23,16 +23,16 @@ NeutralModel *NeutralModel::create(Solver *solver, Mesh *mesh,
     return NULL; // new NeutralNone(solver, mesh, options);
   } else if (type == "diffusion2d") {
     // Diffusion in X-Z only
-    return new Diffusion2D(solver, mesh, options);
+    return new Diffusion2D(solver, mesh, options, dump);
   } else if (type == "recycling") {
     // Recycling at target, assumes exponential neutral profile
-    return new NeutralRecycling(solver, mesh, options);
+    return new NeutralRecycling(solver, mesh, options, dump);
   } else if (type == "fullvelocity") {
     // 3D Navier-Stokes
-    return new FullVelocity(solver, mesh, options);
+    return new FullVelocity(solver, mesh, options, dump);
   } else if (type == "mixed") {
     // Diffusive in X-Z, fluid in Y. Similar to UEDGE
-    return new NeutralMixed(solver, mesh, options);
+    return new NeutralMixed(solver, mesh, options, dump);
   }
   throw BoutException("Unrecognised neutral model '%s'", type.c_str());
 }

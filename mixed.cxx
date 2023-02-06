@@ -9,8 +9,9 @@
 
 using bout::globals::mesh;
 
-NeutralMixed::NeutralMixed(Solver *solver, Mesh *UNUSED(mesh), Options &options)
-    : NeutralModel(options) {
+NeutralMixed::NeutralMixed(Solver *solver, Mesh *UNUSED(mesh), Options &options,
+                           bout::DataFileFacade &dump)
+    : NeutralModel(options, dump) {
   solver->add(Nn, "Nn");
   solver->add(Pn, "Pn");
   solver->add(NVn, "NVn");

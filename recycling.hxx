@@ -9,7 +9,8 @@
 
 class NeutralRecycling : public NeutralModel {
 public:
-  NeutralRecycling(Solver *solver, Mesh *mesh, Options &options);
+  NeutralRecycling(Solver *solver, Mesh *mesh, Options &options,
+                   bout::DataFileFacade &dump);
   ~NeutralRecycling() {}
 
   /// Update plasma quantities

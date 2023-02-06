@@ -7,7 +7,8 @@
 
 class Diffusion2D : public NeutralModel {
 public:
-  Diffusion2D(Solver *solver, Mesh *mesh, Options &options);
+  Diffusion2D(Solver *solver, Mesh *mesh, Options &options,
+              bout::DataFileFacade &dump);
   ~Diffusion2D() = default;
 
   void update(const Field3D &Ne, const Field3D &Te, const Field3D &Ti,

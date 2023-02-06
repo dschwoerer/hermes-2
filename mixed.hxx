@@ -10,7 +10,8 @@
 
 class NeutralMixed : public NeutralModel {
 public:
-  NeutralMixed(Solver *solver, Mesh *mesh, Options &options);
+  NeutralMixed(Solver *solver, Mesh *mesh, Options &options,
+               bout::DataFileFacade &dump);
   ~NeutralMixed() {}
 
   /// Update plasma quantities

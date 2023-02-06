@@ -9,7 +9,8 @@
 
 class NeutralNone : public NeutralModel {
 public:
-  NeutralNone(Solver *, Mesh *, Options &options) : NeutralModel(options) {}
+  NeutralNone(Solver *, Mesh *, Options &options, bout::DataFileFacade &dump)
+      : NeutralModel(options, dump) {}
   ~NeutralNone() {}
 
   /// Update plasma quantities

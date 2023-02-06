@@ -8,8 +8,9 @@
 
 using bout::globals::mesh;
 
-FullVelocity::FullVelocity(Solver *solver, Mesh *mesh, Options &options)
-    : NeutralModel(options) {
+FullVelocity::FullVelocity(Solver *solver, Mesh *mesh, Options &options,
+                           bout::DataFileFacade &dump)
+    : NeutralModel(options, dump) {
   /*! 2D (X-Y) full velocity model
    *
    * Vn2D is covariant (the default), so has components

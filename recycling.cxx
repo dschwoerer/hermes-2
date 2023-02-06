@@ -5,8 +5,9 @@
 
 using bout::globals::mesh;
 
-NeutralRecycling::NeutralRecycling(Solver *, Mesh *mesh, Options &options)
-    : NeutralModel(options) {
+NeutralRecycling::NeutralRecycling(Solver *, Mesh *mesh, Options &options,
+                                   bout::DataFileFacade &dump)
+    : NeutralModel(options, dump) {
   OPTION(options, Lmax, 1.0);     // Maximum mean free path [m]
   OPTION(options, frecycle, 0.9); // Recycling fraction
 

@@ -9,7 +9,8 @@
 
 class FullVelocity : public NeutralModel {
 public:
-  FullVelocity(Solver *solver, Mesh *mesh, Options &options);
+  FullVelocity(Solver *solver, Mesh *mesh, Options &options,
+               bout::DataFileFacade &dump);
   ~FullVelocity() {}
 
   /// Update plasma quantities

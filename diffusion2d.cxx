@@ -7,8 +7,9 @@
 
 using bout::globals::mesh;
 
-Diffusion2D::Diffusion2D(Solver *solver, Mesh *, Options &options)
-    : NeutralModel(options) {
+Diffusion2D::Diffusion2D(Solver *solver, Mesh *, Options &options,
+                         bout::DataFileFacade &dump)
+    : NeutralModel(options, dump) {
   // 2D (X-Z) diffusive model
   // Neutral gas dynamics
   solver->add(Nn, "Nn");
