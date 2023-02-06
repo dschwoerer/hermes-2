@@ -24,7 +24,8 @@ Diffusion2D::Diffusion2D(Solver *solver, Mesh *, Options &options,
 
 void Diffusion2D::update(const Field3D &Ne, const Field3D &Te,
                          const Field3D &UNUSED(Ti), const Field3D &UNUSED(Vi)) {
-
+  checkData(Nn);
+  checkData(Pn);
   mesh->communicate(Nn, Pn);
   Nn.applyParallelBoundary();
   Pn.applyParallelBoundary();
@@ -99,6 +100,7 @@ void Diffusion2D::update(const Field3D &Ne, const Field3D &Te,
   mesh->communicate(Dnn, Fperp);
   Dnn.applyParallelBoundary("parallel_neumann");
   Fperp.applyParallelBoundary("parallel_neumann");
+  // Nn.applyParallelBoundary();
   // Pn.applyParallelBoundary();
 
   // Neutral density

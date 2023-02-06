@@ -918,6 +918,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, source_vary_g11, false);
   if (source_vary_g11) {
     // Average metric tensor component
+    ASSERT0(false);
     g11norm = coord->g11 / averageY(coord->g11);
 
     NeSource *= g11norm;
@@ -932,7 +933,7 @@ int Hermes::init(bool restarting) {
   try {
     Curlb_B.covariant = false; // Contravariant
     mesh->get(Curlb_B, "bxcv");
-    SAVE_ONCE(Curlb_B);
+    // SAVE_ONCE(Curlb_B);
   } catch (BoutException &e) {
     try {
       // May be 2D, reading as 3D
@@ -2311,7 +2312,15 @@ int Hermes::rhs(BoutReal t) {
   if (thermal_conduction || sinks) {
     // Braginskii expression for electron parallel conduction
     // kappa ~ n * v_th^2 * tau
-    kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
+    if (false) {
+      kappa_epar =
+          mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
+    } else {
+      kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
+      kappa_epar.applyBoundary("dirichlet_o2");
+      mesh->communicate(kappa_epar);
+      kappa_epar.applyParallelBoundary(parallel_default_bc);
+    }
 
     if (kappa_limit_alpha > 0.0) {
       /*
@@ -2394,7 +2403,7 @@ int Hermes::rhs(BoutReal t) {
                                      true) *
               bracket_factor; // ExB drift
     // a += -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,
-    // 				     true) * bracket_factor; // ExB drift
+    //				     true) * bracket_factor; // ExB drift
   } else {
     ddt(Ne) = 0.0;
   }
@@ -2403,12 +2412,12 @@ int Hermes::rhs(BoutReal t) {
   if (parallel_flow) {
     // if (!fci_transform){
     //   if (currents) {
-    // 	// Parallel wave speed increased to electron sound speed
-    // 	// since electrostatic & electromagnetic waves are supported
-    // 	ddt(Ne) -= FV::Div_par(Ne, Ve, sqrt(mi_me) * sound_speed);
+    //	// Parallel wave speed increased to electron sound speed
+    //	// since electrostatic & electromagnetic waves are supported
+    //	ddt(Ne) -= FV::Div_par(Ne, Ve, sqrt(mi_me) * sound_speed);
     //   }else {
-    // 	// Parallel wave speed is ion sound speed
-    // 	ddt(Ne) -= FV::Div_par(Ne, Ve, sound_speed);
+    //	// Parallel wave speed is ion sound speed
+    //	ddt(Ne) -= FV::Div_par(Ne, Ve, sound_speed);
     //   }
     // }else{
 
@@ -2509,6 +2518,7 @@ int Hermes::rhs(BoutReal t) {
   // Source
   if (adapt_source) {
     // Add source. Ensure that sink will go to zero as Ne -> 0
+    ASSERT0(false);
     Field3D NeErr = averageY(DC(Ne) - NeTarget);
 
     if (core_sources) {
@@ -2655,7 +2665,7 @@ int Hermes::rhs(BoutReal t) {
                                              poloidal_flows, false) *
                        bracket_factor;
           // d += Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-          // 				     poloidal_flows, false) *
+          //				     poloidal_flows, false) *
           // bracket_factor;
         }
       }
@@ -2683,7 +2693,7 @@ int Hermes::rhs(BoutReal t) {
       // Ion collisional viscosity.
       // Contains poloidal viscosity
       // if(fci_transform){
-      // 	throw BoutException("Ion viscosity not implemented for FCI
+      //	throw BoutException("Ion viscosity not implemented for FCI
       // yet\n");
       // }
       // Vector3D Pi_ciCb_B_2 = 0.5 * Pi_ci * Curlb_B;
@@ -3033,6 +3043,7 @@ int Hermes::rhs(BoutReal t) {
     if (thermal_conduction) {
       if (fci_transform) {
         check_all(kappa_epar);
+        check_all(Te);
         ddt(Pe) += (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
       } else {
         ddt(Pe) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_epar, Te);
@@ -3239,6 +3250,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (adapt_source) {
       // Add source. Ensure that sink will go to zero as Pe -> 0
+      ASSERT0(false);
       Field3D PeErr = averageY(DC(Pe) - PeTarget);
 
       if (core_sources) {
@@ -3604,6 +3616,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (adapt_source) {
       // Add source. Ensure that sink will go to zero as Pe -> 0
+      ASSERT0(false);
       Field3D PiErr = averageY(DC(Pi) - PiTarget);
 
       if (core_sources) {
@@ -3681,6 +3694,7 @@ int Hermes::rhs(BoutReal t) {
   if (radial_buffers) {
     /// Radial buffer regions
 
+    ASSERT0(false);
     // Calculate flux sZ averages
     Field2D PeDC = averageY(DC(Pe));
     Field2D PiDC = averageY(DC(Pi));

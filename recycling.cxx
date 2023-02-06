@@ -1,4 +1,5 @@
 #include "recycling.hxx"
+//#include "comms.hxx"
 
 #include <boutexception.hxx>
 #include <options.hxx>
@@ -29,10 +30,10 @@ void NeutralRecycling::update(const Field3D &Ne, const Field3D &Te,
 
   Coordinates *coord = mesh->getCoordinates();
 
-  Field2D dx2D = DC(coord->dx);
-  Field2D dy2D = DC(coord->dy);
-  Field2D g_222D = DC(coord->g_22);
-  Field2D J2D = DC(coord->J);
+  auto dx = (coord->dx);
+  auto dy = (coord->dy);
+  auto g_22 = (coord->g_22);
+  auto J = coord->J;
   // Lower limit for neutral density (mainly for first time through when Nn = 0)
   Nn = floor(Nn, 1e-8);
 
@@ -48,8 +49,8 @@ void NeutralRecycling::update(const Field3D &Ne, const Field3D &Te,
   // max density equal to ion max density
   static bool first_time = true;
   if (first_time) {
-    Field2D ll;
-    ll = CumSumY2D(hthe * dy2D / Lmax, true);
+    Field3D ll;
+    ll = CumSumY3D(hthe * dy / Lmax, true);
     Nn = max(Nelim) * exp(-ll);
     first_time = false;
   }
