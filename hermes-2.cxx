@@ -1597,11 +1597,11 @@ int Hermes::rhs(BoutReal t) {
         // mesh->communicate(phi,Pe);
 
         // tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
-        Field3D Te32 = pow(Te, 1.5);
-        mesh->communicate(Te32, Ne, phi, Pe, Vi);
+        Field3D Te32 = pow_all(Te, 1.5);
+        // mesh->communicate(Te32, Ne, phi, Pe, Vi);
         tau_e =
             div_all(mul_all(mul_all(div_all(Cs0, rho_s0), tau_e0), Te32), Ne);
-        nu = resistivity_multiply * (1.96 * tau_e * mi_me);
+        nu = mul_all(tau_e, resistivity_multiply * 1.96 * mi_me);
         mesh->communicate(nu);
         nu.applyParallelBoundary(parallel_default_bc);
 
@@ -2460,10 +2460,12 @@ int Hermes::rhs(BoutReal t) {
     // Diamagnetic drift, formulated as a magnetic drift
     // i.e Grad-B + curvature drift
     if (!evolve_ni) {
-      mesh->communicate(Pe);
+      // mesh->communicate(Pe);
+      check_all(Pe);
       ddt(Ne) -= fci_curvature(Pe);
     } else {
-      mesh->communicate(Pi);
+      check_all(Pi);
+      // mesh->communicate(Pi);
       ddt(Ne) += fci_curvature(Pi);
     }
   }
