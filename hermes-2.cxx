@@ -2366,17 +2366,9 @@ int Hermes::rhs(BoutReal t) {
 
   if (ion_viscosity) {
     ///////////////////////////////////////////////////////////
-    // Ion stress tensor. Split into
-    // Pi_ci = Pi_ciperp + Pi_cipar
-    //
-    // In the parallel ion momentum equation the Pi_cipar term
-    // is solved as a parallel diffusion, so is treated separately
-    // All other terms are added to Pi_ciperp, even if they are
-    // not really parallel parts
-    throw BoutException("Non-Boussinesq not implemented yet");
-
-    ASSERT0(false); // not implemented - ask Brendan
-  }                 // ion visocsity
+    // Ion stress tensor.
+    throw BoutException("ion_viscosity not implemented - ask Brendan");
+  } // ion visocsity
 
   ///////////////////////////////////////////////////////////
   // Relaxation potential
