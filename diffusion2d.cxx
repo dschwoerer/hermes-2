@@ -1,27 +1,29 @@
 
 #include "diffusion2d.hxx"
 
+#include "div_ops.hxx"
 #include <bout/constants.hxx>
 #include <bout/fv_ops.hxx>
-#include "div_ops.hxx"
 
 using bout::globals::mesh;
 
-Diffusion2D::Diffusion2D(Solver *solver, Mesh*, Options &options) : NeutralModel(options) {
+Diffusion2D::Diffusion2D(Solver *solver, Mesh *, Options &options)
+    : NeutralModel(options) {
   // 2D (X-Z) diffusive model
   // Neutral gas dynamics
   solver->add(Nn, "Nn");
   solver->add(Pn, "Pn");
-  
+
   Dnn = 0.0; // Neutral gas diffusion
-  
+
   SAVE_REPEAT(Dnn);
 
   Lmax = options["Lmax"].doc("Maximum mean free path [m]").withDefault(1.0);
 }
 
-void Diffusion2D::update(const Field3D &Ne, const Field3D &Te, const Field3D &UNUSED(Ti), const Field3D &UNUSED(Vi)) {
-  
+void Diffusion2D::update(const Field3D &Ne, const Field3D &Te,
+                         const Field3D &UNUSED(Ti), const Field3D &UNUSED(Vi)) {
+
   mesh->communicate(Nn, Pn);
 
   // Calculate atomic processes
@@ -96,32 +98,27 @@ void Diffusion2D::update(const Field3D &Ne, const Field3D &Te, const Field3D &UN
   Pn.applyParallelBoundary();
 
   // Neutral density
-  ddt(Nn) = 
-    + S 
-    + FV::Div_a_Laplace_perp(Dnn, Nn);
-  
+  ddt(Nn) = +S + FV::Div_a_Laplace_perp(Dnn, Nn);
+
   // Neutral pressure
-  ddt(Pn) = (2./3)*Qi
-    + FV::Div_a_Laplace_perp(Dnn, Pn)
-    ;
-  
+  ddt(Pn) = (2. / 3) * Qi + FV::Div_a_Laplace_perp(Dnn, Pn);
 }
 
 void Diffusion2D::precon(BoutReal, BoutReal gamma, BoutReal) {
   // Neutral gas diffusion
-  // Solve (1 - gamma*Dnn*Delp2)^{-1} 
-  if(!inv) {
+  // Solve (1 - gamma*Dnn*Delp2)^{-1}
+  if (!inv) {
     inv = Laplacian::create();
     // Zero value outer boundary
-    
+
     inv->setInnerBoundaryFlags(INVERT_DC_GRAD | INVERT_AC_GRAD);
-    
+
     inv->setCoefA(1.0);
   }
-  
-  inv->setCoefD(-gamma*Dnn);
-  
+
+  inv->setCoefD(-gamma * Dnn);
+
   ddt(Nn) = inv->solve(ddt(Nn));
-  
+
   ddt(Pn) = inv->solve(ddt(Pn));
 }

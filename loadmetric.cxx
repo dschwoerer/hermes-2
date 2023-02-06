@@ -1,8 +1,8 @@
+#include <bout/mesh.hxx>
+#include <field2d.hxx>
 #include <globals.hxx>
 #include <output.hxx>
 #include <utils.hxx>
-#include <field2d.hxx>
-#include <bout/mesh.hxx>
 
 #include "loadmetric.hxx"
 
@@ -14,7 +14,7 @@ void LoadMetric(BoutReal Lnorm, BoutReal Bnorm) {
   GRID_LOAD5(Rxy, Bpxy, Btxy, hthe, sinty); // Load metrics
 
   Coordinates *coord = mesh->getCoordinates();
-  
+
   // Checking for dpsi and qinty used in BOUT grids
   Field2D dx;
   if (!mesh->get(dx, "dpsi")) {
@@ -35,7 +35,8 @@ void LoadMetric(BoutReal Lnorm, BoutReal Bnorm) {
   coord->Bxy /= Bnorm;
 
   // Calculate metric components
-  if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "shifted") {
+  if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() ==
+      "shifted") {
     sinty = 0.0; // I disappears from metric
   }
 

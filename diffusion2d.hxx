@@ -10,8 +10,9 @@ public:
   Diffusion2D(Solver *solver, Mesh *mesh, Options &options);
   ~Diffusion2D() = default;
 
-  void update(const Field3D &Ne, const Field3D &Te, const Field3D &Ti, const Field3D &Vi);
-  
+  void update(const Field3D &Ne, const Field3D &Te, const Field3D &Ti,
+              const Field3D &Vi);
+
   void precon(BoutReal t, BoutReal gamma, BoutReal delta);
 
   virtual Field3D getDensity() override { return Nn; }
@@ -20,10 +21,11 @@ private:
   Field3D Nn;  // Neutral gas density (evolving)
   Field3D Pn;  // Neutral gas pressure (evolving)
   Field3D Dnn; // Neutral gas diffusion rate
-  
+
   BoutReal Lmax; // Maximum mean free path [m]
 
-  std::unique_ptr<Laplacian> inv{nullptr}; // Laplacian inversion used for preconditioning
+  std::unique_ptr<Laplacian> inv{
+      nullptr}; // Laplacian inversion used for preconditioning
 };
 
 #endif // __NEUTRAL_DIFFUSION2D_H__
