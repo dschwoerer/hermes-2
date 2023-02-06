@@ -228,6 +228,16 @@ void ASSERT_CLOSE_ALL(const Field3D &a, const Field3D &b) {
   }
 }
 
+#define setFromLog(var) _setFromLog(var, #var, mesh)
+void _setFromLog(Field3D &var, std::string name, Mesh *mesh) {
+  auto logvar = log(var);
+  logvar.applyBoundary("neumann");
+  mesh->communicate(logvar);
+  logvar.applyParallelBoundary(parallel_default_bc);
+  output_info.write("Setting {:s} via log\n", name);
+  var = exp_all(logvar);
+}
+
 /// Modifies and returns the first argument, taking the boundary from second
 /// argument This is used because unfortunately Field3D::setBoundary returns
 /// void
@@ -744,22 +754,18 @@ int Hermes::init(bool restarting) {
 
     // Note: A Neumann condition simplifies boundary conditions on fluxes
     // where the condition e.g. on J should be on flux (J/B)
-    Bxyz.applyParallelBoundary("parallel_neumann");
-    coord->dz.applyParallelBoundary("parallel_neumann");
-    coord->dy.applyParallelBoundary("parallel_neumann");
-    coord->J.applyParallelBoundary("parallel_neumann");
-    coord->g_22.applyParallelBoundary("parallel_neumann");
-    coord->g_23.applyParallelBoundary("parallel_neumann");
-    coord->g23.applyParallelBoundary("parallel_neumann");
-    coord->Bxy.applyParallelBoundary("parallel_neumann");
-    auto logBxy = log(coord->Bxy);
-    logBxy.applyBoundary("neumann");
-    mesh->communicate(logBxy);
-    logBxy.applyParallelBoundary("parallel_neumann");
-    printf("Setting from log");
-    coord->Bxy = exp_all(logBxy);
+    Bxyz.applyParallelBoundary(parallel_default_bc);
+    coord->dz.applyParallelBoundary(parallel_default_bc);
+    coord->dy.applyParallelBoundary(parallel_default_bc);
+    coord->J.applyParallelBoundary(parallel_default_bc);
+    coord->g_23.applyParallelBoundary(parallel_default_bc);
+    coord->g23.applyParallelBoundary(parallel_default_bc);
+    // coord->Bxy.applyParallelBoundary(parallel_default_bc);
+    // coord->g_22.applyParallelBoundary(parallel_default_bc);
+    setFromLog(coord->Bxy);
+    setFromLog(coord->g_22);
 
-    bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
+    bout::checkPositive(coord->Bxy, "f", "RGN_NOY");
     bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     logB = log(Bxyz);
