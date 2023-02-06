@@ -486,28 +486,18 @@ int Hermes::init(bool restarting) {
     // Normalise
     anomalous_D /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous D_perp = {:e}\n", anomalous_D);
-    a_d3d = anomalous_D;
-    mesh->communicate(a_d3d);
-    a_d3d.yup() = anomalous_D;
-    a_d3d.ydown() = anomalous_D;
+    set_all(a_d3d, anomalous_D);
   }
   if (anomalous_chi > 0.0) {
     // Normalise
     anomalous_chi /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous chi_perp = {:e}\n", anomalous_chi);
-    a_chi3d = anomalous_chi;
-    mesh->communicate(a_chi3d);
-    a_chi3d.yup() = anomalous_D;
-    a_chi3d.ydown() = anomalous_D;
   }
   if (anomalous_nu > 0.0) {
     // Normalise
     anomalous_nu /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous nu_perp = {:e}\n", anomalous_nu);
-    a_nu3d = anomalous_nu;
-    mesh->communicate(a_nu3d);
-    a_nu3d.yup() = anomalous_D;
-    a_nu3d.ydown() = anomalous_D;
+    set_all(a_nu3d, anomalous_nu);
   }
 
   if (ramp_mesh) {
