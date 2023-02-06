@@ -1167,6 +1167,10 @@ int Hermes::rhs(BoutReal t) {
   // Communicate evolving variables
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
+  auto Pe_solver = Pe;
+  Pe_solver.allocate();
+  auto Ne_solver = Ne;
+  Ne_solver.allocate();
   mesh->communicate(EvolvingVars);
   Ne.applyParallelBoundary();
   Vort.applyParallelBoundary();
@@ -4034,6 +4038,9 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) = lowPass(ddt(NVi), low_pass_z);
     }
   }
+
+  ddt(Ne) += Ne_solver - Ne;
+  ddt(Pe) += Pe_solver - Pe;
 
   if (!evolve_plasma) {
     ddt(Ne) = 0.0;
