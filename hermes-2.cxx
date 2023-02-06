@@ -1074,9 +1074,6 @@ int Hermes::init(bool restarting) {
   kappa_ipar = 0.0;
   Dn = 0.0;
 
-  SAVE_REPEAT(a, b, d);
-  SAVE_REPEAT(Te, Ti);
-
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(Jpar); // Parallel current
@@ -1089,8 +1086,6 @@ int Hermes::init(bool restarting) {
     if (resistivity) {
       SAVE_REPEAT(nu); // Parallel resistivity
     }
-
-    // SAVE_REPEAT2(wall_flux, wall_power);
 
     if (ion_viscosity) {
       // Ion parallel stress tensor
