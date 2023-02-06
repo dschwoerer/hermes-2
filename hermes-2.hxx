@@ -86,6 +86,9 @@ private:
   BoutReal kappa_limit_alpha; // Heat flux limiter from SOLPS
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
 
+  BoutReal TLim; // Temperature clamping
+  BoutReal NLim; // Denisty clamping
+
   // Neutral gas model
   NeutralModel *neutrals; // Handles evolution of neutral gas
   bool neutral_friction;

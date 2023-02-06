@@ -464,6 +464,11 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
 
+  OPTION(optsc, TLim, 0.1);
+  TLim /= Tnorm;
+  OPTION(optsc, NLim, 1e14);
+  NLim /= Nnorm;
+
   output.write("Normalisation Te={:e}, Ne={:e}, B={:e}\n", Tnorm, Nnorm, Bnorm);
   SAVE_ONCE(Tnorm, Nnorm, Bnorm, AA); // Save
 
@@ -1035,7 +1040,7 @@ int Hermes::init(bool restarting) {
         if (!restarting) {
           // Start by setting to the sheath current = 0 boundary value
 
-          Ne = floor(Ne, 1e-5);
+          Ne = floor(Ne, NLim);
           Te = floor(Pe / Ne, 0.1 / Tnorm);
           Ti = floor(Pi / Ne, 0.1 / Tnorm);
 
@@ -1201,8 +1206,7 @@ int Hermes::rhs(BoutReal t) {
   alloc_all(Pi);
   alloc_all(Pe);
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
-    // Field3D Ne = floor_all(Ne, 1e-5);
-    floor_all(Ne, 1e-5, i);
+    floor_all(Ne, Nlim, i);
 
     if (!evolve_te) {
       copy_all(Pe, Ne, i); // Fixed electron temperature
