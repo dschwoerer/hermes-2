@@ -786,7 +786,8 @@ int Hermes::init(bool restarting) {
   // Neutral models
 
   TRACE("Initialising neutral models");
-  neutrals = NeutralModel::create(solver, mesh, Options::root()["neutral"]);
+  neutrals =
+      NeutralModel::create(solver, mesh, Options::root()["neutral"], dump);
 
   // Set normalisations
   if (neutrals) {
