@@ -730,7 +730,9 @@ const Field3D D4DZ4_Index(const Field3D &f) {
  * we would need the corner cell values to take Y derivatives along X edges
  *
  */
+
 const Field2D Laplace_FV(const Field2D &k, const Field2D &f) {
+  throw BoutException("Not useful");
   Field2D result;
   result.allocate();
 

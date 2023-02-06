@@ -26,6 +26,8 @@ void Diffusion2D::update(const Field3D &Ne, const Field3D &Te,
                          const Field3D &UNUSED(Ti), const Field3D &UNUSED(Vi)) {
 
   mesh->communicate(Nn, Pn);
+  Nn.applyParallelBoundary();
+  Pn.applyParallelBoundary();
 
   // Calculate atomic processes
   BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
@@ -91,12 +93,12 @@ void Diffusion2D::update(const Field3D &Ne, const Field3D &Te,
     // Factor of 1.09 so that recombination becomes an energy source at 5.25eV
     Rp[i] = (1.09 * Te[i] - 13.6 / Tnorm) * R_rc +
             (Eionize / Tnorm) * R_iz; // Ionisation energy
+    ASSERT1(std::isfinite(Dnn[i]));
+    ASSERT1(std::isfinite(Fperp[i]));
   }
   mesh->communicate(Dnn, Fperp);
   Dnn.applyParallelBoundary("parallel_neumann");
   Fperp.applyParallelBoundary("parallel_neumann");
-  Nn.applyParallelBoundary();
-  Pn.applyParallelBoundary();
   // Pn.applyParallelBoundary();
 
   // Neutral density
