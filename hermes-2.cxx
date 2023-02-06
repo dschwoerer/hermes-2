@@ -40,6 +40,7 @@
 #include "atomicpp/ImpuritySpecies.hxx"
 #include "atomicpp/Prad.hxx"
 
+std::string parallel_default_bc{"parallel_neumann_o2"};
 
 BoutReal floor(BoutReal var, BoutReal f) {
   if (var < f)
@@ -1538,6 +1539,10 @@ int Hermes::rhs(BoutReal t) {
         throw BoutException("Non-Boussinesq not implemented yet");
       }
     }
+    phi.applyBoundary(t);
+    //#warning no parallel phi boundaries needed?
+    mesh->communicate(phi);
+    phi.applyParallelBoundary(parallel_default_bc);
   }
 
   //////////////////////////////////////////////////////////////
@@ -1566,23 +1571,24 @@ int Hermes::rhs(BoutReal t) {
         psi = aparSolver->solve(Field3D(-Ne * VePsi), Field3D(psi));
         // psi = aparSolver->solve(-Ne*VePsi, psi);
         mesh->communicate(psi);
-        psi.applyParallelBoundary("parallel_neumann");
+        psi.applyParallelBoundary(parallel_default_bc);
 
         // Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
         Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
         // Field3D vepsi_betapsi = sub_all(VePsi , 0.5 * beta_e * mi_me * psi);
         // mesh->communicate(vepsi_betapsi);
-        // vepsi_betapsi.applyParallelBoundary("parallel_neumann");
+        // vepsi_betapsi.applyParallelBoundary(parallel_default_bc);
         // Ve = add_all(vepsi_betapsi , Vi);
 
         Ve.applyBoundary(t);
         mesh->communicate(Ve, psi);
-        Ve.applyParallelBoundary("parallel_neumann");
+        Ve.applyParallelBoundary(parallel_default_bc);
+        psi.applyParallelBoundary(parallel_default_bc);
 
         Jpar = mul_all(Ne, sub_all(Vi, Ve));
-        mesh->communicate(Jpar);
-        Jpar.applyParallelBoundary("parallel_neumann");
-        // Jpar.applyBoundary();
+        // mesh->communicate(Jpar);
+        // Jpar.applyParallelBoundary(parallel_default_bc);
+        //  Jpar.applyBoundary();
       } else {
         // Zero electron mass
         // No Ve term in VePsi, only electromagnetic term
@@ -1622,6 +1628,7 @@ int Hermes::rhs(BoutReal t) {
             div_all(mul_all(mul_all(div_all(Cs0, rho_s0), tau_e0), Te32), Ne);
         nu = resistivity_multiply * (1.96 * tau_e * mi_me);
         mesh->communicate(nu);
+        nu.applyParallelBoundary(parallel_default_bc);
 
         Field3D gparpe = Grad_par(Pe);
         Field3D gparphi = Grad_par(phi);
@@ -1640,8 +1647,11 @@ int Hermes::rhs(BoutReal t) {
       Ve.applyBoundary(t);
       // Communicate auxilliary variables
       mesh->communicate(Ve);
+      Ve.applyParallelBoundary(parallel_default_bc);
       Field3D neve = mul_all(Ne, Ve);
       mesh->communicate(NVi, neve);
+      NVi.applyParallelBoundary(parallel_default_bc);
+      neve.applyParallelBoundary(parallel_default_bc);
       Jpar = sub_all(NVi, neve);
     }
     // Ve -= Jpar0 / Ne; // Equilibrium current density
@@ -2552,8 +2562,8 @@ int Hermes::rhs(BoutReal t) {
     // gparne.applyBoundary("neumann");
     // dparve.applyBoundary("neumann");
     // mesh->communicate(gparne,dparve);
-    // gparne.applyParallelBoundary("parallel_neumann");
-    // dparve.applyParallelBoundary("parallel_neumann");
+    // gparne.applyParallelBoundary(parallel_default_bc);
+    // dparve.applyParallelBoundary(parallel_default_bc);
 
     // check_all(gparne);
     // check_all(dparve);
@@ -2719,7 +2729,7 @@ int Hermes::rhs(BoutReal t) {
 
       // This term is central differencing so that it balances the parallel
       // gradient of the potential in Ohm's law
-      // Jpar.applyParallelBoundary("parallel_neumann");
+      // Jpar.applyParallelBoundary(parallel_default_bc);
       ddt(Vort) += Div_parP(Jpar);
       // a += Div_parP(Jpar);
     }
@@ -2926,7 +2936,7 @@ int Hermes::rhs(BoutReal t) {
       // Finite Electron Mass. Small correction needed to conserve energy
       Field3D vdiff = sub_all(Ve, Vi);
       mesh->communicate(vdiff);
-      vdiff.applyParallelBoundary("parallel_neumann");
+      vdiff.applyParallelBoundary(parallel_default_bc);
       ddt(VePsi) -= Vi * Grad_par(vdiff); // Parallel advection
       ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA) *
                     bracket_factor; // ExB advection
