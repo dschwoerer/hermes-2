@@ -2242,7 +2242,7 @@ int Hermes::rhs(BoutReal t) {
   // Collisional damping (normalised)
   if (resistivity || (!electromagnetic && !FiniteElMass)) {
     // Need to calculate nu if electrostatic and zero electron mass
-    nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+    nu = resistivity_multiply / (1.96 * mi_me * tau_e);
 
     if (electron_neutral && neutrals) {
       /*
