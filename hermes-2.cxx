@@ -1207,7 +1207,7 @@ int Hermes::rhs(BoutReal t) {
   alloc_all(Pi);
   alloc_all(Pe);
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
-    floor_all(Ne, Nlim, i);
+    floor_all(Ne, NLim, i);
 
     if (!evolve_te) {
       copy_all(Pe, Ne, i); // Fixed electron temperature
