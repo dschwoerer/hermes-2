@@ -1175,6 +1175,8 @@ int Hermes::rhs(BoutReal t) {
   // are calculated using field aligned quantities
   auto Pe_solver = Pe;
   Pe_solver.allocate();
+  auto Pi_solver = Pi;
+  Pi_solver.allocate();
   auto Ne_solver = Ne;
   Ne_solver.allocate();
   mesh->communicate(EvolvingVars);
@@ -4059,8 +4061,9 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-  ddt(Ne) += Ne_solver - Ne;
-  ddt(Pe) += Pe_solver - Pe;
+  ddt(Ne) += Ne - Ne_solver;
+  ddt(Pe) += Pe - Pe_solver;
+  ddt(Pi) += Pi - Pi_solver;
 
   if (!evolve_plasma) {
     ddt(Ne) = 0.0;
