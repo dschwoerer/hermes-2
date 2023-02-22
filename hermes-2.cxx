@@ -463,6 +463,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, Bnorm, 1.0);  // Reference magnetic field [T]
 
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
+  //https://github.com/bendudson/hermes-3/pull/110/files
+  ASSERT0(AA == 1.0);
 
   OPTION(optsc, TLim, 0.1);
   TLim /= Tnorm;
