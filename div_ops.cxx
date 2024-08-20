@@ -249,143 +249,133 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
   //
 
   int nz = mesh->LocalNz;
-  for (int i = mesh->xstart; i <= mesh->xend; i++)
-    for (int j = mesh->ystart; j <= mesh->yend; j++)
-      for (int k = 0; k < nz; k++) {
-        int kp = (k + 1) % nz;
-        int kpp = (kp + 1) % nz;
-        int km = (k - 1 + nz) % nz;
-        int kmm = (km - 1 + nz) % nz;
+  for (const auto& ind : f.getRegion("RGN_NOBNDRY")) {
+    kp = ind.zp();
+    kpp = ind.zpp();
+    km = ind.zm();
+    kmm = ind.zmm();
+      
+    // 1) Interpolate stream function f onto corners fmp, fpp, fpm
 
-        // 1) Interpolate stream function f onto corners fmp, fpp, fpm
+    BoutReal fmm = 0.25 * (f[ind] + f[ind.xm()] + f[km] +
+			   f[km.xm()]);
+    BoutReal fmp = 0.25 * (f[ind] + f[kp] + f[ind.xm()] +
+			   f[kp.xm()]); // 2nd order accurate
+    BoutReal fpp = 0.25 * (f[ind] + f[kp] + f[ind.xp()] +
+			   f[kp.xp()]);
+    BoutReal fpm = 0.25 * (f[ind] + f[ind.xp()] + f[km] +
+			   f[km.xp()]);
 
-        BoutReal fmm = 0.25 * (f(i, j, k) + f(i - 1, j, k) + f(i, j, km) +
-                               f(i - 1, j, km));
-        BoutReal fmp = 0.25 * (f(i, j, k) + f(i, j, kp) + f(i - 1, j, k) +
-                               f(i - 1, j, kp)); // 2nd order accurate
-        BoutReal fpp = 0.25 * (f(i, j, k) + f(i, j, kp) + f(i + 1, j, k) +
-                               f(i + 1, j, kp));
-        BoutReal fpm = 0.25 * (f(i, j, k) + f(i + 1, j, k) + f(i, j, km) +
-                               f(i + 1, j, km));
+    // 2) Calculate velocities on cell faces
 
-        // 2) Calculate velocities on cell faces
+    BoutReal vU = 0.5 * (coord->J[ind] + coord->J[kp]) * (fmp - fpp) /
+      coord->dx[ind]; // -J*df/dx
+    BoutReal vD = 0.5 * (coord->J[ind] + coord->J[km]) * (fmm - fpm) /
+      coord->dx[ind]; // -J*df/dx
 
-        BoutReal vU = 0.5 * (coord->J(i, j, k) + coord->J(i, j , kp)) * (fmp - fpp) /
-	  coord->dx(i, j, k); // -J*df/dx
-        BoutReal vD = 0.5 * (coord->J(i, j, k) + coord->J(i, j , km)) * (fmm - fpm) /
-	  coord->dx(i, j, k); // -J*df/dx
+    BoutReal vR = 0.5 * (coord->J[ind] + coord->J[ind.xp()]) * (fpp - fpm) /
+      coord->dz[ind]; // J*df/dz
+    BoutReal vL = 0.5 * (coord->J[ind] + coord->J[ind.xm()]) * (fmp - fmm) /
+      coord->dz[ind]; // J*df/dz
 
-        BoutReal vR = 0.5 * (coord->J(i, j, k) + coord->J(i + 1, j, k)) * (fpp - fpm) /
-	  coord->dz(i,j,k); // J*df/dz
-        BoutReal vL = 0.5 * (coord->J(i, j, k) + coord->J(i - 1, j, k)) * (fmp - fmm) /
-	  coord->dz(i,j,k); // J*df/dz
+    // output.write("NEW: (%d,%d,%d) : (%e/%e, %e/%e)\n", i,j,k,vL,vR,
+    // vU,vD);
 
-        // output.write("NEW: (%d,%d,%d) : (%e/%e, %e/%e)\n", i,j,k,vL,vR,
-        // vU,vD);
+    // 3) Calculate n on the cell faces. The sign of the
+    //    velocity determines which side is used.
 
-        // 3) Calculate n on the cell faces. The sign of the
-        //    velocity determines which side is used.
+    // X direction
+    Stencil1D s;
+    s.c = n[ind];
+    s.m = n[ind.xm()];
+    s.mm = n[ind.xmm()];
+    s.p = n[ind.xp()];
+    s.pp = n[ind.xpp()];
 
-        // X direction
-        Stencil1D s;
-        s.c = n(i, j, k);
-        s.m = n(i - 1, j, k);
-        s.mm = n(i - 2, j, k);
-        s.p = n(i + 1, j, k);
-        s.pp = n(i + 2, j, k);
+    MC(s);
 
-        // Upwind(s, mesh->dx(i,j));
-        // XPPM(s, mesh->dx(i,j));
-        // Fromm(s, coord->dx(i, j));
-        MC(s);
+    // Right side
+    if ((mesh->lastX()) && (i.x() == mesh->xend)) {
+      // At right boundary in X
 
-        // Right side
-        if ((i == mesh->xend) && (mesh->lastX())) {
-          // At right boundary in X
-
-          if (bndry_flux) {
-            BoutReal flux;
-            if (vR > 0.0) {
-              // Flux to boundary
-              flux = vR * s.R;
-            } else {
-              // Flux in from boundary
-              flux = vR * 0.5 * (n(i + 1, j, k) + n(i, j, k));
-            }
-            result(i, j, k) += flux / (coord->dx(i, j, k) * coord->J(i, j, k));
-            result(i + 1, j, k) -=
-	      flux / (coord->dx(i + 1, j, k) * coord->J(i + 1, j, k));
-          }
-        } else {
-          // Not at a boundary
-          if (vR > 0.0) {
-            // Flux out into next cell
-            BoutReal flux = vR * s.R;
-            result(i, j, k) += flux / (coord->dx(i, j, k) * coord->J(i, j, k));
-            result(i + 1, j, k) -=
-	      flux / (coord->dx(i + 1, j, k) * coord->J(i + 1, j, k));
-
-            // if(i==mesh->xend)
-            //  output.write("Setting flux (%d,%d) : %e\n",
-            //  j,k,result(i+1,j,k));
-          }
-        }
-
-        // Left side
-
-        if ((i == mesh->xstart) && (mesh->firstX())) {
-          // At left boundary in X
-
-          if (bndry_flux) {
-            BoutReal flux;
-
-            if (vL < 0.0) {
-              // Flux to boundary
-              flux = vL * s.L;
-
-            } else {
-              // Flux in from boundary
-              flux = vL * 0.5 * (n(i - 1, j, k) + n(i, j, k));
-            }
-            result(i, j, k) -= flux / (coord->dx(i, j, k) * coord->J(i, j, k));
-            result(i - 1, j, k) +=
-	      flux / (coord->dx(i - 1, j, k) * coord->J(i - 1, j, k));
-          }
-        } else {
-          // Not at a boundary
-
-          if (vL < 0.0) {
-            BoutReal flux = vL * s.L;
-            result(i, j, k) -= flux / (coord->dx(i, j, k) * coord->J(i, j, k));
-            result(i - 1, j, k) +=
-	      flux / (coord->dx(i - 1, j, k) * coord->J(i - 1, j, k));
-          }
-        }
-
-        /// NOTE: Need to communicate fluxes
-
-        // Z direction
-        s.m = n(i, j, km);
-        s.mm = n(i, j, kmm);
-        s.p = n(i, j, kp);
-        s.pp = n(i, j, kpp);
-
-        // Upwind(s, coord->dz);
-        // XPPM(s, coord->dz);
-        // Fromm(s, coord->dz);
-        MC(s);
-
-        if (vU > 0.0) {
-          BoutReal flux = vU * s.R; 
-          result(i, j, k) += flux / (coord->J(i, j, k) * coord->dz(i, j, k));
-          result(i, j, kp) -= flux / (coord->J(i, j, kp) * coord->dz(i, j, kp));
-        }
-        if (vD < 0.0) {
-          BoutReal flux = vD * s.L; 
-          result(i, j, k) -= flux / (coord->J(i, j, k) * coord->dz(i, j, k));
-          result(i, j, km) += flux  / (coord->J(i, j, km) * coord->dz(i, j, km));
-        }
+      if (bndry_flux) {
+	BoutReal flux;
+	if (vR > 0.0) {
+	  // Flux to boundary
+	  flux = vR * s.R;
+	} else {
+	  // Flux in from boundary
+	  flux = vR * 0.5 * (n[ind.xp()] + n[ind]);
+	}
+	result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
+	result[ind.xp()] -=
+	  flux / (coord->dx[ind.xp()] * coord->J[ind.xp()]);
       }
+    } else {
+      // Not at a boundary
+      if (vR > 0.0) {
+	// Flux out into next cell
+	BoutReal flux = vR * s.R;
+	result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
+	result[ind.xp()] -=
+	  flux / (coord->dx[ind.xp()] * coord->J[ind.xp()]);
+      }
+    }
+
+    // Left side
+
+    if ((mesh->firstX()) && (ind.x() == mesh->xstart)) {
+      // At left boundary in X
+
+      if (bndry_flux) {
+	BoutReal flux;
+
+	if (vL < 0.0) {
+	  // Flux to boundary
+	  flux = vL * s.L;
+	} else {
+	  // Flux in from boundary
+	  flux = vL * 0.5 * (n[ind.xm()] + n[ind]);
+	}
+	result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
+	result[ind.xm()] +=
+	  flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
+      }
+    } else {
+      // Not at a boundary
+
+      if (vL < 0.0) {
+	BoutReal flux = vL * s.L;
+	result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
+	result[ind.xm()] +=
+	  flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
+      }
+    }
+
+    /// NOTE: Need to communicate fluxes
+
+    // Z direction
+    s.m = n[km];
+    s.mm = n[kmm];
+    s.p = n[kp];
+    s.pp = n[kpp];
+
+    // Upwind(s, coord->dz);
+    // XPPM(s, coord->dz);
+    // Fromm(s, coord->dz);
+    MC(s);
+
+    if (vU > 0.0) {
+      BoutReal flux = vU * s.R; 
+      result[ind] += flux / (coord->J[ind] * coord->dz[ind]);
+      result[kp] -= flux / (coord->J[kp] * coord->dz[kp]);
+    }
+    if (vD < 0.0) {
+      BoutReal flux = vD * s.L; 
+      result[ind] -= flux / (coord->J[ind] * coord->dz[ind]);
+      result[km] += flux  / (coord->J[km] * coord->dz[km]);
+    }
+  }
   FV::communicateFluxes(result);
 
   //////////////////////////////////////////
