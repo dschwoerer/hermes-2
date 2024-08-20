@@ -1767,13 +1767,9 @@ int Hermes::rhs(BoutReal t) {
         psi = div_all(VePsi, 0.5 * mi_me * beta_e);
 
         // Ve = (NVi - Delp2(psi)) / Ne;
-        if(fci_transform){
-          Field3D one;
-          set_all(one, 1.0);
-          Jpar = FCIDiv_a_Grad_perp(one, psi);
-        } else {
-          Jpar = FCIDiv_a_Grad_perp(1.0, psi);
-        }
+	Field3D one;
+	set_all(one, 1.0);
+	Jpar = FCIDiv_a_Grad_perp(one, psi);
 
         mesh->communicate(Jpar);
 
@@ -2144,8 +2140,8 @@ int Hermes::rhs(BoutReal t) {
     // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
     ddt(Ne) =
         SETNAME(-Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,
-                                       true) *
-                bracket_factor); // ExB drift
+                                       true)
+				       * bracket_factor); // ExB drift
     // a += -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,
     //                                      true) * bracket_factor; // ExB drift
   } else {
@@ -2304,12 +2300,8 @@ int Hermes::rhs(BoutReal t) {
   if (low_n_diffuse) {
     // Diffusion which kicks in at very low density, in order to
     // help prevent negative density regions
-    if(fci_transform){
-      ddt(Ne) += SETNAME(
-          Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, Ne));
-    }else{
-      ddt(Ne) += FV::Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, Ne);
-    }
+    ddt(Ne) += SETNAME(
+        Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, Ne));
   }
   if (low_n_diffuse_perp) {
     ddt(Ne) += (Div_Perp_Lap_FV_Index(1e-4 / Ne, Ne, ne_bndry_flux));
@@ -2370,44 +2362,25 @@ int Hermes::rhs(BoutReal t) {
     if (boussinesq) {
       TRACE("Vort:boussinesq");
       // Using the Boussinesq approximation
-      if(!fci_transform){
-        ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-                                           poloidal_flows, false);
-      }else{//fci used
-        if (j_pol_pi){
-          ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-                                             poloidal_flows, false) * bracket_factor;
+      if (j_pol_pi){
+	ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
+					   poloidal_flows, false) * bracket_factor;;
 
-          // V_ExB dot Grad(Pi)
-          Field3D vEdotGradPi = bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
-          vEdotGradPi.applyBoundary("free_o2");
-          // delp2(phi) term
-          Field3D DelpPhi_2B2 = 0.5 * Delp2(phi) / SQ(Bxyz);
-          DelpPhi_2B2.applyBoundary("free_o2");
+	// V_ExB dot Grad(Pi)
+	Field3D vEdotGradPi = bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
+	vEdotGradPi.applyBoundary("free_o2");
+	// delp2(phi) term
+	Field3D DelpPhi_2B2 = 0.5 * Delp2(phi) / SQ(Bxyz);
+	DelpPhi_2B2.applyBoundary("free_o2");
 
+	Field3D inv_2sqb = 0.5 / SQ(Bxyz);
+	ddt(Vort) -= FCIDiv_a_Grad_perp(inv_2sqb, vEdotGradPi);
 
-          if(!fci_transform){
-            ddt(Vort) -= FCIDiv_a_Grad_perp(0.5 / SQ(coord->Bxy), vEdotGradPi);
-          }else{
-            Field3D inv_2sqb = 0.5 / SQ(Bxyz);
-            ddt(Vort) -= FCIDiv_a_Grad_perp(inv_2sqb, vEdotGradPi);
-          }
+	// delp2 phi v_ExB term
+	ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
+					   poloidal_flows) * bracket_factor;;
 
-          // delp2 phi v_ExB term
-          ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
-                                               poloidal_flows) * bracket_factor;
-
-        }else if (j_pol_simplified) {
-          // use simplified polarization term from i.e. GBS
-          ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-                                               poloidal_flows, false) * bracket_factor;
-          // d += Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-          //                                      poloidal_flows, false) * bracket_factor;
-        }
       }
-
-
-
     } else {
       // When the Boussinesq approximation is not made,
       // then the changing ion density introduces a number
@@ -2436,7 +2409,7 @@ int Hermes::rhs(BoutReal t) {
       // Vector3D Pi_ciCb_B_2 = 0.5 * Pi_ci * Curlb_B;
       // mesh->communicate(Pi_ciCb_B_2);
       ddt(Vort) += 0.5*fci_curvature(Pi_ci) -
-                   Div_n_bxGrad_f_B_XPPM(1. / 3, Pi_ci, vort_bndry_flux);
+	Div_n_bxGrad_f_B_XPPM(1. / 3, Pi_ci, vort_bndry_flux) * bracket_factor;;
     }
 
     if (anomalous_nu > 0.0) {
@@ -2464,28 +2437,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if (vort_dissipation) {
-      if(!fci_transform){
-        // Adds dissipation term like in other equations
-        // Maximum speed either electron sound speed or Alfven speed
-        Field3D max_speed = Bnorm * coord->Bxy /
-          sqrt(SI::mu0 * AA * SI::Mp * Nnorm * Ne) /
-          Cs0; // Alfven speed (normalised by Cs0)
-        Field3D elec_sound = sqrt(mi_me) * sound_speed; // Electron sound speed
-        for (auto& i : max_speed.getRegion("RGN_ALL")) {
-          if (elec_sound[i] > max_speed[i]) {
-            max_speed[i] = elec_sound[i];
-          }
-
-          // Limit to 100x reference sound speed or light speed
-          BoutReal lim = BOUTMIN(100., 3e8/Cs0);
-          if (max_speed[i] > lim) {
-            max_speed[i] = lim;
-          }
-        }
-        ddt(Vort) -= FV::Div_par(Vort, 0.0, max_speed);
-      }else{
-        ddt(Vort) += mul_all(mul_all(coord->dy,coord->dy),D2DY2(Vort));
-      }
+      ddt(Vort) += mul_all(mul_all(coord->dy,coord->dy),D2DY2(Vort));
     }
     if (phi_dissipation) {
       // Adds dissipation term like in other equations, but depending on gradient of potential
@@ -2537,17 +2489,11 @@ int Hermes::rhs(BoutReal t) {
 
         ve_eta = ve_eta / (1. + abs(q_cl / q_fl));
 
-        if (fci_transform) {
-          ASSERT0("not implemented: FCI comm" == nullptr);
-        }
+	ASSERT0("not implemented: FCI comm");
         mesh->communicate(ve_eta);
         ve_eta.applyBoundary("neumann");
       }
-      if(fci_transform){
-        ddt(VePsi) += Div_par_K_Grad_par(ve_eta, Ve);
-      }else{
-        ddt(VePsi) += FV::Div_par_K_Grad_par(ve_eta, Ve);
-      }
+      ddt(VePsi) += Div_par_K_Grad_par(ve_eta, Ve);
     }
 
     if (FiniteElMass) {
@@ -2603,11 +2549,7 @@ int Hermes::rhs(BoutReal t) {
           max_speed[i] = lim;
         }
       }
-      if (!fci_transform) {
-        ddt(VePsi) -= FV::Div_par(Ve - Vi, 0.0, max_speed);
-      } else {
-        ddt(VePsi) += SQ(coord->dy) * (D2DY2(Ve) - D2DY2(Vi));
-      }
+      ddt(VePsi) += SQ(coord->dy) * (D2DY2(Ve) - D2DY2(Vi));
     }
   }
 
@@ -2620,8 +2562,8 @@ int Hermes::rhs(BoutReal t) {
       // ddt(NVi) = bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor;
       // ExB drift, only if electric field calculated
       ddt(NVi) = setName(
-          -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux, poloidal_flows) *
-              bracket_factor,
+			 -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux, poloidal_flows)
+						* bracket_factor,
           "ExB drift");
     } else {
       ddt(NVi) = 0.0;
@@ -2652,19 +2594,12 @@ int Hermes::rhs(BoutReal t) {
     if (ion_viscosity) {
       TRACE("NVi:ion viscosity");
       // Poloidal flow damping
-      if(fci_transform){
-        // The parallel part is solved as a diffusion term
-        Coordinates::FieldMetric sqrtBVi = mul_all(B12, Vi);
-        Coordinates::FieldMetric Pitau_i_B =
-            div_all(mul_all(Pi, tau_i), (coord->Bxy));
-        ddt(NVi) += 1.28 * B12 *
-                    setName(Div_par_K_Grad_par(Pitau_i_B, sqrtBVi),
-                            "Div_par_K_Grad_par(Pitau_i_B, sqrtBVi)");
-      }else{
-        ddt(NVi) += 1.28 * B12 *
-                    FV::Div_par_K_Grad_par(Pi * tau_i / (coord->Bxy), B12 * Vi);
-      }
-
+      // The parallel part is solved as a diffusion term
+      Coordinates::FieldMetric sqrtBVi = mul_all(B12, Vi);
+      Coordinates::FieldMetric Pitau_i_B =
+	div_all(mul_all(Pi, tau_i), (coord->Bxy));
+      ddt(NVi) += 1.28 * B12 *
+	SETNAME(Div_par_K_Grad_par(Pitau_i_B, sqrtBVi));
       if (currents) {
         // Perpendicular part. B32 = B^{3/2}
         // This is only included if ExB flow is included
@@ -2719,12 +2654,8 @@ int Hermes::rhs(BoutReal t) {
     if (low_n_diffuse) {
       // Diffusion which kicks in at very low density, in order to
       // help prevent negative density regions
-      if(fci_transform){
-        ASSERT0(false);
-        ddt(NVi) += Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
-      }else{
-        ddt(NVi) += FV::Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
-      }
+      ASSERT0(false);
+      ddt(NVi) += Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
     }
     if (low_n_diffuse_perp) {
       ddt(NVi) += Div_Perp_Lap_FV_Index(1e-4 / Ne, NVi, ne_bndry_flux);
@@ -2743,34 +2674,21 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_te) {
 
     if (currents) {
-      if(fci_transform){
-            // ddt(Pe) = bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
-            ddt(Pe) = SETNAME(-Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux,
-                                                     poloidal_flows, true) *
-                              bracket_factor);
-      }else{
-        // Divergence of heat flux due to ExB advection
-        ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows,
-                                         true);
-      }
+      // Divergence of heat flux due to ExB advection
+      // ddt(Pe) = bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
+      ddt(Pe) = SETNAME(-Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux,
+					       poloidal_flows, true)
+					       *bracket_factor);
     } else {
       ddt(Pe) = 0.0;
     }
 
     if (parallel_flow_p_term) {
       // Parallel flow
-      if (fci_transform){
-        check_all(Pe);
-        check_all(Ve);
-        Field3D peve = mul_all(Pe,Ve);
-        ddt(Pe) -= SETNAME(Div_parP(peve));
-      } else {
-        if (currents) {
-          ddt(Pe) -= (FV::Div_par(Pe, Ve, sqrt(mi_me) * sound_speed));
-        } else {
-          ddt(Pe) -= (FV::Div_par(Pe, Ve, sound_speed));
-        }
-      }
+      check_all(Pe);
+      check_all(Ve);
+      Field3D peve = mul_all(Pe,Ve);
+      ddt(Pe) -= SETNAME(Div_parP(peve));
     }
 
     if (j_diamag) { // Diamagnetic flow
@@ -2785,24 +2703,14 @@ int Hermes::rhs(BoutReal t) {
 
     // Parallel heat conduction
     if (thermal_conduction) {
-      if (fci_transform) {
-        check_all(kappa_epar);
-        auto tmp = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
-        tmp.name = "(2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);";
-        ddt(Pe) += tmp;
-      } else {
-        ddt(Pe) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_epar, Te);
-      }
+      check_all(kappa_epar);
+      ddt(Pe) += SETNAME((2. / 3) * Div_par_K_Grad_par(kappa_epar, Te));
     }
 
     if (thermal_flux) {
       // Parallel heat convection
-      if (fci_transform) {
-        Field3D tejpar = mul_all(Te,Jpar);
-        ddt(Pe) += SETNAME((2. / 3) * 0.71 * Div_parP(tejpar));
-      } else {
-        ddt(Pe) += (2. / 3) * 0.71 * Div_par(Te * Jpar);
-      }
+      Field3D tejpar = mul_all(Te,Jpar);
+      ddt(Pe) += SETNAME((2. / 3) * 0.71 * Div_parP(tejpar));
     }
 
     if (currents && resistivity) {
@@ -2996,29 +2904,20 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_ti) {
 
     if (currents) {
-      if(fci_transform){
-        ddt(Pi) = SETNAME(-Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux,
-                                                 poloidal_flows, true) *
-                          bracket_factor);
-      }else{
-        // Divergence of heat flux due to ExB advection
-        ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows,
-                                         true);
-      }
+      // Divergence of heat flux due to ExB advection
+      ddt(Pi) = SETNAME(-Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux,
+					       poloidal_flows, true)
+					       * bracket_factor);
     } else {
       ddt(Pi) = 0.0;
     }
 
     // Parallel flow
     if (parallel_flow_p_term) {
-      if (fci_transform) {
-        check_all(Pi);
-        check_all(Vi);
-        Field3D pivi = mul_all(Pi,Vi);
-        ddt(Pi) -= SETNAME(Div_parP(pivi));
-      } else {
-        ddt(Pi) -= FV::Div_par(Pi, Vi, sound_speed);
-      }
+      check_all(Pi);
+      check_all(Vi);
+      Field3D pivi = mul_all(Pi,Vi);
+      ddt(Pi) -= SETNAME(Div_parP(pivi));
     }
 
     if (j_diamag) { // Diamagnetic flow
@@ -3031,11 +2930,7 @@ int Hermes::rhs(BoutReal t) {
       // ddt(Pi) -= (2. / 3) * Pi * (Curlb_B * Grad(phi));
       ddt(Pi) -= (2. / 3) * SETNAME(Pi * fci_curvature(phi));
 
-      if (fci_transform) {
-        ddt(Pi) += SETNAME(Pi * fci_curvature(Pi + Pe));
-      } else {
-        ddt(Pi) += Pi * Div((Pe + Pi) * Curlb_B);
-      }
+      ddt(Pi) += SETNAME(Pi * fci_curvature(Pi + Pe));
     }
 
     if (j_par) {
@@ -3048,11 +2943,7 @@ int Hermes::rhs(BoutReal t) {
 
     // Parallel heat conduction
     if (thermal_conduction) {
-      if (fci_transform) {
-        ddt(Pi) += (2. / 3) * SETNAME(Div_par_K_Grad_par(kappa_ipar, Ti));
-      } else {
-        ddt(Pi) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_ipar, Ti);
-      }
+      ddt(Pi) += (2. / 3) * SETNAME(Div_par_K_Grad_par(kappa_ipar, Ti));
     }
 
     // Parallel pressure gradients (sound waves)
@@ -3424,15 +3315,10 @@ int Hermes::rhs(BoutReal t) {
     if (neutral_friction) {
       // Vorticity
       if (boussinesq) {
-        if (fci_transform) {
-          Field3D tmp = neutrals->Fperp / (Ne * SQ(coord->Bxy));
-          mesh->communicate(tmp);
-          tmp.applyParallelBoundary(parbc);
-          ddt(Vort) -= FCIDiv_a_Grad_perp(tmp, phi);
-        } else {
-          ddt(Vort) -=
-              FCIDiv_a_Grad_perp(neutrals->Fperp / (Ne * SQ(coord->Bxy)), phi);
-        }
+	Field3D tmp = neutrals->Fperp / (Ne * SQ(coord->Bxy));
+	mesh->communicate(tmp);
+	tmp.applyParallelBoundary(parbc);
+	ddt(Vort) -= FCIDiv_a_Grad_perp(tmp, phi);
       } else {
         ddt(Vort) -= FCIDiv_a_Grad_perp(neutrals->Fperp / SQ(coord->Bxy), phi);
       }
