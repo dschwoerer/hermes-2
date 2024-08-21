@@ -228,7 +228,7 @@ void XPPM(Stencil1D &n, const BoutReal h) {
  */
 const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
                                     bool bndry_flux, bool poloidal,
-                                    bool positive) {
+                                    bool positive, const Field3D &bf) {
   Field3D result{0.0};
 
   Coordinates *coord = mesh->getCoordinates();
@@ -250,11 +250,9 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 
   int nz = mesh->LocalNz;
   for (const auto& ind : f.getRegion("RGN_NOBNDRY")) {
-    kp = ind.zp();
-    kpp = ind.zpp();
-    km = ind.zm();
-    kmm = ind.zmm();
-      
+    auto kp = ind.zp();
+    auto km = ind.zm();
+
     // 1) Interpolate stream function f onto corners fmp, fpp, fpm
 
     BoutReal fmm = 0.25 * (f[ind] + f[ind.xm()] + f[km] +
@@ -288,37 +286,39 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
     Stencil1D s;
     s.c = n[ind];
     s.m = n[ind.xm()];
-    s.mm = n[ind.xmm()];
     s.p = n[ind.xp()];
-    s.pp = n[ind.xpp()];
+#if CHECK > 1
+    s.pp = s.mm = BoutNaN;
+#endif
 
     MC(s);
 
+    const BoutReal bfR = 0.5 * (bf[ind] + bf[ind.xp()]);
+    const BoutReal bfL = 0.5 * (bf[ind] + bf[ind.xm()]);
     // Right side
-    if ((mesh->lastX()) && (i.x() == mesh->xend)) {
+    if ((mesh->lastX()) && (ind.x() == mesh->xend)) {
       // At right boundary in X
 
       if (bndry_flux) {
 	BoutReal flux;
 	if (vR > 0.0) {
 	  // Flux to boundary
-	  flux = vR * s.R;
-	} else {
-	  // Flux in from boundary
-	  flux = vR * 0.5 * (n[ind.xp()] + n[ind]);
-	}
-	result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
-	result[ind.xp()] -=
+          flux = vR * s.R * bfR;
+        } else {
+          // Flux in from boundary
+          flux = vR * 0.5 * (n[ind.xp()] + n[ind]) * bfR;
+        }
+        result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xp()] -=
 	  flux / (coord->dx[ind.xp()] * coord->J[ind.xp()]);
       }
     } else {
       // Not at a boundary
       if (vR > 0.0) {
 	// Flux out into next cell
-	BoutReal flux = vR * s.R;
-	result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
-	result[ind.xp()] -=
-	  flux / (coord->dx[ind.xp()] * coord->J[ind.xp()]);
+        BoutReal flux = vR * s.R * bfR;
+        result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xp()] -= flux / (coord->dx[ind.xp()] * coord->J[ind.xp()]);
       }
     }
 
@@ -337,18 +337,17 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 	  // Flux in from boundary
 	  flux = vL * 0.5 * (n[ind.xm()] + n[ind]);
 	}
-	result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
-	result[ind.xm()] +=
-	  flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
+        flux *= bfL;
+        result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xm()] += flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
       }
     } else {
       // Not at a boundary
 
       if (vL < 0.0) {
-	BoutReal flux = vL * s.L;
-	result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
-	result[ind.xm()] +=
-	  flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
+        const BoutReal flux = vL * s.L * bfL;
+        result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xm()] += flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
       }
     }
 
@@ -356,9 +355,10 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 
     // Z direction
     s.m = n[km];
-    s.mm = n[kmm];
     s.p = n[kp];
-    s.pp = n[kpp];
+#if CHECK > 1
+    s.pp = s.mm = BoutNaN;
+#endif
 
     // Upwind(s, coord->dz);
     // XPPM(s, coord->dz);

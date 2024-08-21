@@ -2138,10 +2138,9 @@ int Hermes::rhs(BoutReal t) {
   if (currents) {
     // ExB drift, only if electric field is evolved
     // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
-    ddt(Ne) =
-        SETNAME(-Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,
-                                       true)
-				       * bracket_factor); // ExB drift
+    ddt(Ne) = SETNAME(-Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux,
+                                             poloidal_flows, true,
+                                             bracket_factor)); // ExB drift
     // a += -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,
     //                                      true) * bracket_factor; // ExB drift
   } else {
@@ -2363,13 +2362,15 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Vort:boussinesq");
       // Using the Boussinesq approximation
       if (j_pol_pi){
-	ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-					   poloidal_flows, false) * bracket_factor;;
+        ddt(Vort) -=
+            Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
+                                  poloidal_flows, false, bracket_factor);
 
-	// V_ExB dot Grad(Pi)
-	Field3D vEdotGradPi = bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
-	vEdotGradPi.applyBoundary("free_o2");
-	// delp2(phi) term
+        // V_ExB dot Grad(Pi)
+        Field3D vEdotGradPi =
+            bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
+        vEdotGradPi.applyBoundary("free_o2");
+        // delp2(phi) term
 	Field3D DelpPhi_2B2 = 0.5 * Delp2(phi) / SQ(Bxyz);
 	DelpPhi_2B2.applyBoundary("free_o2");
 
@@ -2377,9 +2378,9 @@ int Hermes::rhs(BoutReal t) {
 	ddt(Vort) -= FCIDiv_a_Grad_perp(inv_2sqb, vEdotGradPi);
 
 	// delp2 phi v_ExB term
-	ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
-					   poloidal_flows) * bracket_factor;;
-
+        ddt(Vort) -=
+            Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
+                                  poloidal_flows, false, bracket_factor);
       }
     } else {
       // When the Boussinesq approximation is not made,
@@ -2408,8 +2409,9 @@ int Hermes::rhs(BoutReal t) {
       // }
       // Vector3D Pi_ciCb_B_2 = 0.5 * Pi_ci * Curlb_B;
       // mesh->communicate(Pi_ciCb_B_2);
-      ddt(Vort) += 0.5*fci_curvature(Pi_ci) -
-	Div_n_bxGrad_f_B_XPPM(1. / 3, Pi_ci, vort_bndry_flux) * bracket_factor;;
+      ddt(Vort) += 0.5 * fci_curvature(Pi_ci) -
+                   Div_n_bxGrad_f_B_XPPM(1. / 3, Pi_ci, vort_bndry_flux, false,
+                                         false, bracket_factor);
     }
 
     if (anomalous_nu > 0.0) {
@@ -2561,10 +2563,10 @@ int Hermes::rhs(BoutReal t) {
     if (currents) {
       // ddt(NVi) = bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor;
       // ExB drift, only if electric field calculated
-      ddt(NVi) = setName(
-			 -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux, poloidal_flows)
-						* bracket_factor,
-          "ExB drift");
+      ddt(NVi) =
+          setName(-Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux,
+                                         poloidal_flows, false, bracket_factor),
+                  "ExB drift");
     } else {
       ddt(NVi) = 0.0;
     }
@@ -2676,9 +2678,8 @@ int Hermes::rhs(BoutReal t) {
     if (currents) {
       // Divergence of heat flux due to ExB advection
       // ddt(Pe) = bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
-      ddt(Pe) = SETNAME(-Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux,
-					       poloidal_flows, true)
-					       *bracket_factor);
+      ddt(Pe) = SETNAME(-Div_n_bxGrad_f_B_XPPM(
+          Pe, phi, pe_bndry_flux, poloidal_flows, true, bracket_factor));
     } else {
       ddt(Pe) = 0.0;
     }
@@ -2905,9 +2906,8 @@ int Hermes::rhs(BoutReal t) {
 
     if (currents) {
       // Divergence of heat flux due to ExB advection
-      ddt(Pi) = SETNAME(-Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux,
-					       poloidal_flows, true)
-					       * bracket_factor);
+      ddt(Pi) = SETNAME(-Div_n_bxGrad_f_B_XPPM(
+          Pi, phi, pe_bndry_flux, poloidal_flows, true, bracket_factor));
     } else {
       ddt(Pi) = 0.0;
     }
