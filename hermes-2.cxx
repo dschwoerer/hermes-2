@@ -887,6 +887,13 @@ int Hermes::init(bool restarting) {
   // Normalise
   coord->Bxy /= Bnorm;
   // Metric is in grid file - just need to normalise
+
+  //coord->dx /= rho_s0;
+  //coord->dy /= rho_s0;
+  //coord->dz /= rho_s0;
+
+  //CONTRAVARIANT
+
   coord->g11 *= (rho_s0 * rho_s0);
   coord->g22 *= (rho_s0 * rho_s0);
   coord->g33 *= (rho_s0 * rho_s0);
@@ -894,15 +901,28 @@ int Hermes::init(bool restarting) {
   coord->g13 *= (rho_s0 * rho_s0);
   coord->g23 *= (rho_s0 * rho_s0);
 
-  coord->J /= rho_s0 * rho_s0 * rho_s0;
 
+
+  //Jacobi matrix
+  coord->J /= rho_s0 * rho_s0 * rho_s0;
+  
+
+  //LIKE IN D'haeseleer
+
+  //subscripts = ()_i -> covariant
+
+  //superscripts = ()^j -> contravariant
+
+  
+  //COVARIANT
   coord->g_11 /= rho_s0 * rho_s0;
-  coord->g_22 /= rho_s0 * rho_s0;
+  coord->g_22 /= rho_s0 * rho_s0;                  // In m^2
   coord->g_33 /= rho_s0 * rho_s0;
   coord->g_12 /= rho_s0 * rho_s0;
   coord->g_13 /= rho_s0 * rho_s0;
   coord->g_23 /= rho_s0 * rho_s0;
-
+  
+  
   coord->geometry(); // Calculate other metrics
 
   _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
@@ -1010,6 +1030,7 @@ int Hermes::init(bool restarting) {
     carbon_rad = new HutchinsonCarbonRadiation();
   }
 
+  
   if ((carbon_fraction > 0.0) || impurity_adas) {
     // Save impurity radiation
     SAVE_REPEAT(Rzrad);
@@ -1266,9 +1287,13 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(kappa_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
 
+    SAVE_REPEAT(nu);
+
+    /*
     if (resistivity) {
       SAVE_REPEAT(nu); // Parallel resistivity
     }
+    */
 
     // SAVE_REPEAT2(wall_flux, wall_power);
 
@@ -1792,8 +1817,9 @@ int Hermes::rhs(BoutReal t) {
         // tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
         Field3D Te32= pow(Te,1.5);
         mesh->communicate(Te32, Ne, phi, Pe, Vi);
-        tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-        nu = resistivity_multiply * (1.96 * tau_e * mi_me);
+        //tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+	tau_e = div_all(mul_all(mul_all(Cs0, tau_e0) , Te32) , Ne);
+	nu = resistivity_multiply / (1.96 * tau_e * mi_me);
         mesh->communicate(nu);
 
         Field3D gparpe = Grad_par(Pe);
@@ -1943,8 +1969,12 @@ int Hermes::rhs(BoutReal t) {
   // Collisions and stress tensor
   TRACE("Collisions");
 
-  const BoutReal tau_e1 = (Cs0 / rho_s0) * tau_e0;
-  const BoutReal tau_i1 = (Cs0 / rho_s0) * tau_i0;
+  //const BoutReal tau_e1 = (Cs0 / rho_s0) * tau_e0;
+  // const BoutReal tau_i1 = (Cs0 / rho_s0) * tau_i0;
+
+  const BoutReal tau_e1 = (Cs0 ) * tau_e0;
+  const BoutReal tau_i1 = (Cs0 ) * tau_i0;
+
   Field3D neutral_rate;
   if (ion_neutral && ( neutrals || (ion_neutral_rate > 0.0))) {
     // Include ion-neutral collisions in collision time
@@ -2694,7 +2724,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (j_diamag) { // Diamagnetic flow
       // Magnetic drift (curvature) divergence.
-      ddt(Pe) -= SETNAME((5. / 3) * fci_curvature(mul_all(Pe, Te)));
+      ddt(Pe) += SETNAME((5. / 3) * fci_curvature(mul_all(Pe, Te)));
 
       // This term energetically balances diamagnetic term
       // in the vorticity equation
