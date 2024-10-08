@@ -1126,7 +1126,7 @@ Field3D CustomStencil::apply(const Field3D &a, const std::string &region) {
 BoutReal CustomStencil::apply(const Field3D &a, const Ind3D &i) {
   BoutReal result = 0;
   for (size_t c = 0; c < coefs.size(); ++c) {
-    result += coefs[c][i] * a[i.xp(xoffset[c]).zpm(zoffset[c])];
+    result += coefs[c][i] * a[i.offset(xoffset[c], 0, zoffset[c])];
   }
   return result;
 }
