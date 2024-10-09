@@ -72,9 +72,19 @@ private:
   Field3D Ve, Vi, Jpar;  // Electron and ion parallel velocities
   Field3D psi;        // Electromagnetic potential (-A_||)
   Field3D phi;        // Electrostatic potential
+
+
+  // DEBUG VARIABLES
   Field3D a;
   Field3D b;
   Field3D d;
+  Field3D debug_visheath,debug_VePsisheath;
+  Field3D debug_phisheath;
+  Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv,TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff;
+  Field3D TE_Ne_ExB, TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper;
+  Field3D debug_denom;
+  
+  Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow,vort_anom,vort_hyper;
   
   // Limited variables
   Field3D Telim, Tilim;
@@ -121,8 +131,10 @@ private:
   bool j_par;       // Parallel current:    Vort <-> Psi
   bool j_pol_pi;       // Polarisation current with explicit Pi dependence
   bool j_pol_simplified;       // Polarisation current with explicit Pi dependence
-  
+
+  bool phi_bndry_after_solve;
   bool parallel_flow;
+  bool parallel_vort_flow;
   bool parallel_flow_p_term; // Vi advection terms in Pe, Pi
   bool pe_par;      // Parallel pressure gradient: Pe <-> Psi
   bool pe_par_p_term; // Includes terms in Pe,Pi equations
@@ -138,13 +150,23 @@ private:
   bool thermal_conduction; // Braginskii electron heat conduction
   bool electron_ion_transfer; // Electron-ion heat transfer
   bool classical_diffusion; // Collisional diffusion, including viscosity
+  bool use_Div_n_bxGrad_f_B_XPPM; //Use stencil operator for ExB
+  bool use_bracket;                 //Use the bracket for the curvature drifts
+  bool norm_dxdydz;
+  bool use_Div_parP_n;
+  bool conduction_kappagrad;
+  bool Ohmslaw_use_ve;
+  Field3D NVi_Div_parP_n;
+
+  bool TE_VePsi,TE_Ne;
   
+  BoutReal MMS_Ne_ParDiff;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
   Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
-
+  Field3D a_MMS3d;
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
   
@@ -170,7 +192,7 @@ private:
   bool radial_inner_zero_nvi; // Damp NVi towards zero in inner buffer
 
   bool Div_parP_n_sheath_extra{true}; // Use special handling for the sheath
-
+  bool VePsi_perp;
   bool phi_smoothing;
   BoutReal phi_sf;
   
@@ -215,12 +237,15 @@ private:
   bool low_n_diffuse; // Diffusion in parallel direction at low density
   bool low_n_diffuse_perp; // Diffusion in perpendicular direction at low density
   BoutReal ne_hyper_z, pe_hyper_z; // Hyper-diffusion
+  BoutReal pi_hyper_z;
   BoutReal scale_num_cs; // Scale numerical sound speed
   BoutReal floor_num_cs; // Apply a floor to the numerical sound speed
   bool vepsi_dissipation; // Dissipation term in VePsi equation
   bool vort_dissipation; // Dissipation term in Vorticity equation
   bool phi_dissipation; // Dissipation term in Vorticity equation
 
+  BoutReal VePsi_hyperXZ;
+  
   BoutReal ne_num_diff;
   BoutReal ne_num_hyper;
   BoutReal vi_num_diff; // Numerical perpendicular diffusion
@@ -257,6 +282,9 @@ private:
   
   // Curvature, Grad-B drift
   Vector3D Curlb_B; // Curl(b/B)
+
+  Vector3D bxcv;
+  Field3D bxcvx,bxcvy,bxcvz;
   
   // Perturbed parallel gradient operators
   Field3D Grad_parP(const Field3D &f);
@@ -301,7 +329,9 @@ private:
   bool fci_transform;
   Field3D Bxyz, logB;
   Field3D bracket_factor;
-  Field3D fci_curvature(const Field3D &f);
+  Field3D fci_curvature(const Field3D &f, const bool &bool_bracket);
+
+  
   BoutMask fwd_bndry_mask, bwd_bndry_mask;
 
   // perp boundary

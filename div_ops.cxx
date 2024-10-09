@@ -553,6 +553,155 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
   return result;
 }
 
+// FV method for the curvature vector
+
+const Field3D Div_f_v_no_y(const Field3D& n_in, const Field3D& vx, const Field3D& vz, bool bndry_flux) {
+
+  Field3D result{0.0};
+
+  Coordinates *coord = mesh->getCoordinates();
+
+  //////////////////////////////////////////
+  // X-Z advection.
+  //
+  //             Z
+  //             |
+  //
+  //    fmp --- vU --- fpp
+  //     |      nU      |
+  //     |               |
+  //    vL nL        nR vR    -> X
+  //     |               |
+  //     |      nD       |
+  //    fmm --- vD --- fpm
+  //
+
+  Field3D n = n_in;
+
+  
+  
+  int nz = mesh->LocalNz;
+  for (int i = mesh->xstart; i <= mesh->xend; i++)
+    for (int j = mesh->ystart; j <= mesh->yend; j++)
+      for (int k = 0; k < nz; k++) {
+        int kp = (k + 1) % nz;
+        int kpp = (kp + 1) % nz;
+        int km = (k - 1 + nz) % nz;
+        int kmm = (km - 1 + nz) % nz;
+
+	
+	// Calculate velocities
+
+	BoutReal vU = 0.25 * (coord->J(i, j, k) + coord->J(i, j , kp)) * (vz(i,j,k)+vz(i,j,kp));
+	BoutReal vD = 0.25 * (coord->J(i, j, k) + coord->J(i, j , km)) * (vz(i,j,k)+vz(i,j,km));
+
+	BoutReal vR = 0.25 * (coord->J(i, j, k) + coord->J(i+1, j , k)) * (vx(i,j,k)+vx(i+1,j,k));
+	BoutReal vL = 0.25 * (coord->J(i, j, k) + coord->J(i-1, j , k)) * (vx(i,j,k)+vx(i-1,j,k));
+
+	Stencil1D s;
+        s.c = n(i, j, k);
+        s.m = n(i - 1, j, k);
+        s.mm = n(i - 2, j, k);
+        s.p = n(i + 1, j, k);
+        s.pp = n(i + 2, j, k);
+
+	MC(s);
+
+	//Right side
+	if ((i == mesh->xend) && (mesh->lastX())) {
+          // At right boundary in X
+
+          if (bndry_flux) {
+            BoutReal flux;
+            if (vR > 0.0) {
+              // Flux to boundary
+              flux = vR * s.R;
+            } else {
+              // Flux in from boundary
+              flux = vR * 0.5 * (n(i + 1, j, k) + n(i, j, k));
+            }
+            result(i, j, k) += flux / (coord->dx(i, j, k) * coord->J(i, j, k));
+            result(i + 1, j, k) -=
+	      flux / (coord->dx(i + 1, j, k) * coord->J(i + 1, j, k));
+          }
+        } else {
+          // Not at a boundary
+          if (vR > 0.0) {
+            // Flux out into next cell
+            BoutReal flux = vR * s.R;
+            result(i, j, k) += flux / (coord->dx(i, j, k) * coord->J(i, j, k));
+            result(i + 1, j, k) -=
+	      flux / (coord->dx(i + 1, j, k) * coord->J(i + 1, j, k));
+	  }
+        }
+
+	//Left side
+
+	if ((i == mesh->xstart) && (mesh->firstX())) {
+          // At left boundary in X
+
+          if (bndry_flux) {
+            BoutReal flux;
+
+            if (vL < 0.0) {
+              // Flux to boundary
+              flux = vL * s.L;
+
+            } else {
+              // Flux in from boundary
+              flux = vL * 0.5 * (n(i - 1, j, k) + n(i, j, k));
+            }
+            result(i, j, k) -= flux / (coord->dx(i, j, k) * coord->J(i, j, k));
+            result(i - 1, j, k) +=
+	      flux / (coord->dx(i - 1, j, k) * coord->J(i - 1, j, k));
+          }
+        } else {
+          // Not at a boundary
+
+          if (vL < 0.0) {
+            BoutReal flux = vL * s.L;
+            result(i, j, k) -= flux / (coord->dx(i, j, k) * coord->J(i, j, k));
+            result(i - 1, j, k) +=
+	      flux / (coord->dx(i - 1, j, k) * coord->J(i - 1, j, k));
+          }
+        }
+
+
+	// NOw THE Z DIRECTION
+
+	s.m = n(i, j, km);
+        s.mm = n(i, j, kmm);
+        s.p = n(i, j, kp);
+        s.pp = n(i, j, kpp);
+
+        // Upwind(s, coord->dz);
+        // XPPM(s, coord->dz);
+        // Fromm(s, coord->dz);
+        MC(s);
+
+        if (vU > 0.0) {
+          BoutReal flux = vU * s.R; 
+          result(i, j, k) += flux / (coord->J(i, j, k) * coord->dz(i, j, k));
+          result(i, j, kp) -= flux / (coord->J(i, j, kp) * coord->dz(i, j, kp));
+        }
+        if (vD < 0.0) {
+          BoutReal flux = vD * s.L; 
+          result(i, j, k) -= flux / (coord->J(i, j, k) * coord->dz(i, j, k));
+          result(i, j, km) += flux  / (coord->J(i, j, km) * coord->dz(i, j, km));
+        }
+
+      }
+
+  FV::communicateFluxes(result);
+
+  return result;
+	
+	
+}
+
+
+
+
 /// *** USED ***
 const Field3D Div_Perp_Lap_FV_Index(const Field3D &as, const Field3D &fs,
                                     bool xflux) {

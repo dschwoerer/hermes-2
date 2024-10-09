@@ -53,6 +53,9 @@ private:
  * @param[in] The field to be differentiated
  * @param[in] bndry_flux  Are fluxes through the boundary calculated?
  */
+
+const Field3D Div_f_v_no_y(const Field3D& n_in, const Field3D& vx,const Field3D& vz, bool bndry_flux);
+
 const Field3D Div_par_diffusion_index(const Field3D &f, bool bndry_flux=true);
 
 const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f, bool bndry_flux=true, bool poloidal=false, bool positive=false);
