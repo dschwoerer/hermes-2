@@ -21,13 +21,13 @@
 */
 #include "hermes-2.hxx"
 
-#include <derivs.hxx>
-#include <field_factory.hxx>
-#include <initialprofiles.hxx>
+#include <bout/derivs.hxx>
+#include <bout/field_factory.hxx>
+#include <bout/initialprofiles.hxx>
 
-#include <invert_parderiv.hxx>
-#include "parallel_boundary_region.hxx"
-#include "boundary_region.hxx"
+#include <bout/invert_parderiv.hxx>
+#include <bout/parallel_boundary_region.hxx>
+#include <bout/boundary_region.hxx>
 
 #include "div_ops.hxx"
 #include "loadmetric.hxx"

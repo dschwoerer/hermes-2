@@ -5,8 +5,8 @@
 #ifndef __NEUTRAL_MODEL_H__
 #define __NEUTRAL_MODEL_H__
 
-#include <field3d.hxx>
-#include <options.hxx>
+#include <bout/field3d.hxx>
+#include <bout/options.hxx>
 #include <bout/solver.hxx>
 #include <bout/mesh.hxx>
 

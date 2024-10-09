@@ -27,11 +27,11 @@
 
 #include <bout/assert.hxx>
 #include <bout/mesh.hxx>
-#include <derivs.hxx>
-#include <difops.hxx>
-#include <globals.hxx>
-#include <output.hxx>
-#include <utils.hxx>
+#include <bout/derivs.hxx>
+#include <bout/difops.hxx>
+#include <bout/globals.hxx>
+#include <bout/output.hxx>
+#include <bout/utils.hxx>
 
 #include <bout/index_derivs.hxx>
 

@@ -3,7 +3,7 @@
 #define __NEUTRAL_DIFFUSION2D_H__
 
 #include "neutral-model.hxx"
-#include <invert_laplace.hxx>
+#include <bout/invert_laplace.hxx>
 
 class Diffusion2D : public NeutralModel {
 public:
