@@ -231,6 +231,12 @@ const Field3D ceil(const Field3D &var, BoutReal f, REGION rgn = RGN_ALL) {
   return result;
 }
 
+bool isZero(const Field3D &f) {
+  const auto lmin = min(f, true);
+  const auto lmax = max(f, true);
+  return (lmin == 0.0 && lmax == 0.0);
+}
+
 // Square function for vectors
 Field3D SQ(const Vector3D &v) { return v * v; }
 
@@ -354,6 +360,48 @@ DO_ALL(*, mul)
 DO_ALL(/, div)
 DO_ALL(+, add)
 DO_ALL(-, sub)
+#undef DO_ALL
+
+#define DO_ALL(op, name)                                                       \
+  template <class A, class B> Field3D &name##_all_inp(A &a, const B &b) {      \
+    BOUT_FOR(i, a.getRegion("RGN_ALL")) { name##_all(a, b, i); }               \
+    checkData(a, "RGN_ALL");                                                   \
+    return a;                                                                  \
+  }                                                                            \
+  Field3D &name##_all_inp(Field3D &a, const Field3D &b) {                      \
+    const int n = a.getNx() * a.getNy() * a.getNz();                           \
+    GET_ALL(a);                                                                \
+    GET_ALL(b);                                                                \
+    BOUT_OMP(omp parallel for simd)                                            \
+    for (int i = 0; i < n; ++i) {                                              \
+      aa[i] op ba[i];                                                          \
+      ab[i] op bb[i];                                                          \
+      ac[i] op bc[i];                                                          \
+    }                                                                          \
+    return a;                                                                  \
+  }                                                                            \
+  Field3D &name##_all_inp(Field3D &a, BoutReal b) {                            \
+    const int n = a.getNx() * a.getNy() * a.getNz();                           \
+    GET_ALL(a);                                                                \
+    BOUT_OMP(omp parallel for simd)                                            \
+    for (int i = 0; i < n; ++i) {                                              \
+      aa[i] op b;                                                              \
+      ab[i] op b;                                                              \
+      ac[i] op b;                                                              \
+    }                                                                          \
+    return a;                                                                  \
+  }                                                                            \
+  template <class A, class B> void name##_all_inp(A &a, const B &b, Ind3D i) { \
+    a[i] op _get(b, i);                                                        \
+    yup(a, i) op yup(b, i);                                                    \
+    ydown(a, i) op ydown(b, i);                                                \
+  }
+
+// #include "mul_all.cxx"
+DO_ALL(*=, mul)
+DO_ALL(/=, div)
+DO_ALL(+=, add)
+DO_ALL(-=, sub)
 
 #undef DO_ALL
 #define DO_ALL(op)                                                             \
@@ -893,16 +941,28 @@ int Hermes::init(bool restarting) {
   // coord->dz /= rho_s0;
 
   // CONTRAVARIANT
+  if (isZero(coord->g12)) {
+    set_all(coord->g12, 0.0);
+  }
+  if (isZero(coord->g_12)) {
+    set_all(coord->g_12, 0.0);
+  }
+  if (isZero(coord->g23)) {
+    set_all(coord->g23, 0.0);
+  }
+  if (isZero(coord->g_23)) {
+    set_all(coord->g_23, 0.0);
+  }
 
-  coord->g11 *= (rho_s0 * rho_s0);
-  coord->g22 *= (rho_s0 * rho_s0);
-  coord->g33 *= (rho_s0 * rho_s0);
-  coord->g12 *= (rho_s0 * rho_s0);
-  coord->g13 *= (rho_s0 * rho_s0);
-  coord->g23 *= (rho_s0 * rho_s0);
+  mul_all_inp(coord->g11, rho_s0 * rho_s0);
+  mul_all_inp(coord->g22, rho_s0 * rho_s0);
+  mul_all_inp(coord->g33, rho_s0 * rho_s0);
+  mul_all_inp(coord->g12, rho_s0 * rho_s0);
+  mul_all_inp(coord->g13, rho_s0 * rho_s0);
+  mul_all_inp(coord->g23, rho_s0 * rho_s0);
 
   // Jacobi matrix
-  coord->J /= rho_s0 * rho_s0 * rho_s0;
+  div_all_inp(coord->J, rho_s0 * rho_s0 * rho_s0);
 
   // LIKE IN D'haeseleer
 
@@ -911,12 +971,12 @@ int Hermes::init(bool restarting) {
   // superscripts = ()^j -> contravariant
 
   // COVARIANT
-  coord->g_11 /= rho_s0 * rho_s0;
-  coord->g_22 /= rho_s0 * rho_s0; // In m^2
-  coord->g_33 /= rho_s0 * rho_s0;
-  coord->g_12 /= rho_s0 * rho_s0;
-  coord->g_13 /= rho_s0 * rho_s0;
-  coord->g_23 /= rho_s0 * rho_s0;
+  div_all_inp(coord->g_11, rho_s0 * rho_s0);
+  div_all_inp(coord->g_22, rho_s0 * rho_s0); // In m^2
+  div_all_inp(coord->g_33, rho_s0 * rho_s0);
+  div_all_inp(coord->g_12, rho_s0 * rho_s0);
+  div_all_inp(coord->g_13, rho_s0 * rho_s0);
+  div_all_inp(coord->g_23, rho_s0 * rho_s0);
 
   coord->geometry(); // Calculate other metrics
 
