@@ -1871,9 +1871,8 @@ int Hermes::rhs(BoutReal t) {
         // tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
         Field3D Te32= pow(Te,1.5);
         mesh->communicate(Te32, Ne, phi, Pe, Vi);
-        // tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) ,
-        // Te32) , Ne);
-        tau_e = div_all(mul_all(mul_all(Cs0, tau_e0), Te32), Ne);
+        tau_e =
+            div_all(mul_all(mul_all(div_all(Cs0, rho_s0), tau_e0), Te32), Ne);
         nu = resistivity_multiply / (1.96 * tau_e * mi_me);
         mesh->communicate(nu);
 
@@ -2024,11 +2023,8 @@ int Hermes::rhs(BoutReal t) {
   // Collisions and stress tensor
   TRACE("Collisions");
 
-  // const BoutReal tau_e1 = (Cs0 / rho_s0) * tau_e0;
-  //  const BoutReal tau_i1 = (Cs0 / rho_s0) * tau_i0;
-
-  const BoutReal tau_e1 = (Cs0)*tau_e0;
-  const BoutReal tau_i1 = (Cs0)*tau_i0;
+  const BoutReal tau_e1 = (Cs0 / rho_s0) * tau_e0;
+  const BoutReal tau_i1 = (Cs0 / rho_s0) * tau_i0;
 
   Field3D neutral_rate;
   if (ion_neutral && ( neutrals || (ion_neutral_rate > 0.0))) {
