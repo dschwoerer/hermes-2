@@ -3670,6 +3670,7 @@ Field3D Hermes::Grad_parP(const Field3D &f) {
 }
 
 Field3D Hermes::Div_parP(const Field3D &f) {
+  return Div_par(f);
   auto* coords = mesh->getCoordinates();
   Field3D result;
   result.allocate();
