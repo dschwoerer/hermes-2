@@ -231,12 +231,6 @@ const Field3D ceil(const Field3D &var, BoutReal f, REGION rgn = RGN_ALL) {
   return result;
 }
 
-bool isZero(const Field3D &f) {
-  const auto lmin = min(f, true);
-  const auto lmax = max(f, true);
-  return (lmin == 0.0 && lmax == 0.0);
-}
-
 // Square function for vectors
 Field3D SQ(const Vector3D &v) { return v * v; }
 
@@ -941,19 +935,6 @@ int Hermes::init(bool restarting) {
   // coord->dz /= rho_s0;
 
   // CONTRAVARIANT
-  if (isZero(coord->g12)) {
-    set_all(coord->g12, 0.0);
-  }
-  if (isZero(coord->g_12)) {
-    set_all(coord->g_12, 0.0);
-  }
-  if (isZero(coord->g23)) {
-    set_all(coord->g23, 0.0);
-  }
-  if (isZero(coord->g_23)) {
-    set_all(coord->g_23, 0.0);
-  }
-
   mul_all_inp(coord->g11, rho_s0 * rho_s0);
   mul_all_inp(coord->g22, rho_s0 * rho_s0);
   mul_all_inp(coord->g33, rho_s0 * rho_s0);
