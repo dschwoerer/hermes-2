@@ -452,6 +452,52 @@ Field3D withBoundary(Field3D &&f, const Field3D &bndry) {
   return f;
 }
 
+BoutReal Hermes::getCoreFluxPe() {
+  ASSERT1(classical_diffusion == false);
+  BoutReal sum = 0;
+  Te = Pe / Ne;
+  if ((anomalous_D > 0.0) && anomalous_D_pepi) {
+    const auto a = a_d3d * Te;
+    BOUT_FOR(i, Ne.getRegion("RGN_dapg_fv_xbndry")) {
+      sum += _FCIDiv_a_Grad_perp->xflux(a, Ne, i);
+    }
+  }
+  if (anomalous_chi > 0.0) {
+    const auto a = a_chi3d * Ne;
+    BOUT_FOR(i, Te.getRegion("RGN_dapg_fv_xbndry")) {
+      sum += (2. / 3) * _FCIDiv_a_Grad_perp->xflux(a, Te, i);
+    }
+  }
+  BoutReal sum_all;
+  MPI_Allreduce(&sum, &sum_all, 1, MPI_DOUBLE, MPI_SUM,
+                mesh->getYcomm(mesh->xstart - 1));
+  // output.write("sum is {} {}\n", sum, sum_all);
+  return sum_all;
+}
+
+BoutReal Hermes::getCoreFluxPi() {
+  ASSERT1(classical_diffusion == false);
+  BoutReal sum = 0;
+  Ti = Pi / Ne;
+  if ((anomalous_D > 0.0) && anomalous_D_pepi) {
+    const auto a = a_d3d * Ti;
+    BOUT_FOR(i, Ne.getRegion("RGN_dapg_fv_xbndry")) {
+      sum += _FCIDiv_a_Grad_perp->xflux(a, Ne, i);
+    }
+  }
+  if (anomalous_chi > 0.0) {
+    const auto a = a_chi3d * Ne;
+    BOUT_FOR(i, Te.getRegion("RGN_dapg_fv_xbndry")) {
+      sum += (2. / 3) * _FCIDiv_a_Grad_perp->xflux(a, Ti, i);
+    }
+  }
+  BoutReal sum_all;
+  MPI_Allreduce(&sum, &sum_all, 1, MPI_DOUBLE, MPI_SUM,
+                mesh->getYcomm(mesh->xstart - 1));
+  // output.write("sum is {} {}\n", sum, sum_all);
+  return sum_all;
+}
+
 int Hermes::init(bool restarting) {
 
   auto& opt = Options::root();
@@ -801,7 +847,16 @@ int Hermes::init(bool restarting) {
   // so that Pe = Ne and/or Pi = Ne
   evolve_te = optsc["evolve_te"].doc("Evolve electron temperature?")
     .withDefault<bool>(true);
+
+  {
+    const BoutReal eV = 1.6022E-19; // Joule in eV
+    coreFluxNorm = rho_s0 * rho_s0 * Omega_ci * Nnorm * Tnorm * eV;
+  }
   if (evolve_te) {
+    power_core_Pe = opt["Pe"]["heatflux_core"]
+                        .doc("Total flux in Watt for domain")
+                        .withDefault(power_core_Pe);
+    power_core_Pe /= coreFluxNorm;
     SOLVE_FOR(Pe);
     EvolvingVars.add(Pe);
     if (output_ddt) {
@@ -814,6 +869,10 @@ int Hermes::init(bool restarting) {
     .withDefault<bool>(true);
   if (evolve_ti) {
     SOLVE_FOR(Pi);
+    power_core_Pi = opt["Pi"]["heatflux_core"]
+                        .doc("Total flux in Watt for domain")
+                        .withDefault(power_core_Pi);
+    power_core_Pi /= coreFluxNorm;
     EvolvingVars.add(Pi);
     if (output_ddt) {
       SAVE_REPEAT(ddt(Pi));
@@ -1429,6 +1488,48 @@ int Hermes::rhs(BoutReal t) {
             Pi(x, y, z) = Pi(mesh->xend, y, z) * fac;
           }
         }
+      }
+    }
+  }
+  const std::string fmt_flux =
+      "flux is {:.3e} W vs {:.3e} W -> neumann_o2({}) -> {:.3e} W ; Δ = {}\n";
+  if (power_core_Pe > 0) {
+    if (mesh->firstX()) {
+      Pe.applyBoundary(fmt::format("neumann_o2({})", coreFluxPeLastBC));
+      auto flux1 = getCoreFluxPe();
+      int cnt = 0;
+      while (std::abs(flux1 / power_core_Pe - 1) > 1e-2) {
+        ASSERT0(++cnt < 100);
+        auto val =
+            coreFluxPeLastBC - (flux1 - power_core_Pe) / coreFluxPeLastDiff;
+        Pe.applyBoundary(fmt::format("neumann_o2({})", val));
+        auto flux2 = getCoreFluxPe();
+        coreFluxPeLastDiff = (flux1 - flux2) / (coreFluxPeLastBC - val);
+        coreFluxPeLastBC = val;
+        output_debug.write(fmt_flux, flux1 * coreFluxNorm,
+                           power_core_Pe * coreFluxNorm, coreFluxPeLastBC,
+                           flux2 * coreFluxNorm, coreFluxPeLastDiff);
+        flux1 = flux2;
+      }
+    }
+  }
+  if (power_core_Pi > 0) {
+    if (mesh->firstX()) {
+      Pi.applyBoundary(fmt::format("neumann_o2({})", coreFluxPiLastBC));
+      auto flux1 = getCoreFluxPi();
+      int cnt = 0;
+      while (std::abs(flux1 / power_core_Pi - 1) > 1e-2) {
+        ASSERT0(++cnt < 100);
+        auto val =
+            coreFluxPiLastBC - (flux1 - power_core_Pi) / coreFluxPiLastDiff;
+        Pi.applyBoundary(fmt::format("neumann_o2({})", val));
+        auto flux2 = getCoreFluxPi();
+        coreFluxPiLastDiff = (flux1 - flux2) / (coreFluxPiLastBC - val);
+        coreFluxPiLastBC = val;
+        output_debug.write(fmt_flux, flux1 * coreFluxNorm,
+                           power_core_Pi * coreFluxNorm, coreFluxPiLastBC,
+                           flux2 * coreFluxNorm, coreFluxPiLastDiff);
+        flux1 = flux2;
       }
     }
   }

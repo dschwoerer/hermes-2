@@ -138,7 +138,8 @@ private:
   bool thermal_conduction; // Braginskii electron heat conduction
   bool electron_ion_transfer; // Electron-ion heat transfer
   bool classical_diffusion; // Collisional diffusion, including viscosity
-  
+  BoutReal power_core_Pe{-1.}, power_core_Pi{-1.};
+
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
@@ -264,6 +265,14 @@ private:
   Field3D Div_parP_f(const Field3D &f, const Field3D &v, Field3D &cs);
   Field3D Div_parP_n(const Field3D &f, const Field3D &v, Field3D &cs,
                      const BoutMask &fwd, const BoutMask &bwd);
+
+  BoutReal getCoreFluxPe();
+  BoutReal getCoreFluxPi();
+  BoutReal coreFluxPeLastBC = -1;
+  BoutReal coreFluxPeLastDiff = -1e3;
+  BoutReal coreFluxPiLastBC = -1;
+  BoutReal coreFluxPiLastDiff = -1e3;
+  BoutReal coreFluxNorm;
 
   // Electromagnetic solver for finite electron mass case
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?

@@ -1182,16 +1182,6 @@ Field3D dagp_fv::operator()(const Field3D &a, const Field3D &f) {
   return result;
 }
 
-inline BoutReal dagp_fv::xflux(const Field3D &a, const Field3D &f,
-                               const Ind3D &i) {
-  const auto ixp = i.xp();
-  const auto av = 0.5 * (a[i] + a[ixp]);
-  const auto dx = f[ixp] - f[i];
-  const auto dz =
-      0.5 * (f[i.zp()] - f[i.zm()] + f[i.zp().xp()] - f[i.zm().xp()]);
-  return -(fac_XX[i] * dx + fac_XZ[i] * dz) * av;
-}
-
 inline BoutReal dagp_fv::zflux(const Field3D &a, const Field3D &f,
                                const Ind3D &i) {
   const auto izp = i.zp();

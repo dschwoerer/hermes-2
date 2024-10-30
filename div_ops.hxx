@@ -101,6 +101,14 @@ public:
     return *this;
   }
   dagp_fv &operator/=(BoutReal fac) { return operator*=(1 / fac); }
+  inline BoutReal xflux(const Field3D &a, const Field3D &f, const Ind3D &i) {
+    const auto ixp = i.xp();
+    const auto av = 0.5 * (a[i] + a[ixp]);
+    const auto dx = f[ixp] - f[i];
+    const auto dz =
+        0.5 * (f[i.zp()] - f[i.zm()] + f[i.zp().xp()] - f[i.zm().xp()]);
+    return -(fac_XX[i] * dx + fac_XZ[i] * dz) * av;
+  }
 
 private:
   Field3D fac_XX;
@@ -108,7 +116,6 @@ private:
   Field3D fac_ZX;
   Field3D fac_ZZ;
   Field3D volume;
-  BoutReal xflux(const Field3D &a, const Field3D &f, const Ind3D &i);
   BoutReal zflux(const Field3D &a, const Field3D &f, const Ind3D &i);
 };
 } // namespace FCI
