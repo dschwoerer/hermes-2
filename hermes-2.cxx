@@ -1056,13 +1056,13 @@ int Hermes::init(bool restarting) {
     fwd_bndry_mask = BoutMask(mesh, false);
     bwd_bndry_mask = BoutMask(mesh, false);
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
-      for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-        fwd_bndry_mask[bndry_par->ind()] = true;
+      for (const auto &pnt : *bndry_par) {
+        fwd_bndry_mask[pnt.ind()] = true;
       }
     }
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::bwd)) {
-      for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-        bwd_bndry_mask[bndry_par->ind()] = true;
+      for (const auto &pnt : *bndry_par) {
+        bwd_bndry_mask[pnt.ind()] = true;
       }
     }
 
@@ -1997,10 +1997,10 @@ int Hermes::rhs(BoutReal t) {
     case 0 :{
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-          int x = bndry_par->ind().x();
-          int y = bndry_par->ind().y();
-          int z = bndry_par->ind().z();
+        for (const auto &pnt : *bndry_par) {
+          int x = pnt.ind().x();
+          int y = pnt.ind().y();
+          int z = pnt.ind().z();
           // Zero-gradient density
           BoutReal nesheath = floor(Ne(x, y, z), 0.0);
 
@@ -2895,10 +2895,10 @@ int Hermes::rhs(BoutReal t) {
 
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-          int x = bndry_par->ind().x();
-          int y = bndry_par->ind().y();
-          int z = bndry_par->ind().z();
+        for (const auto &pnt : *bndry_par) {
+          int x = pnt.ind().x();
+          int y = pnt.ind().y();
+          int z = pnt.ind().z();
           // Temperature and density at the sheath entrance
           BoutReal tesheath =
               floor(0.5 * (Te(x, y, z) +
@@ -3221,10 +3221,10 @@ int Hermes::rhs(BoutReal t) {
       sheath_dpi = 0.0;
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-          int x = bndry_par->ind().x();
-          int y = bndry_par->ind().y();
-          int z = bndry_par->ind().z();
+        for (const auto &pnt : *bndry_par) {
+          int x = pnt.ind().x();
+          int y = pnt.ind().y();
+          int z = pnt.ind().z();
           // Temperature and density at the sheath entrance
           BoutReal tisheath =
               floor(0.5 * (Ti(x, y, z) +
