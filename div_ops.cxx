@@ -295,6 +295,8 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 
     const BoutReal bfR = 0.5 * (bf[ind] + bf[ind.xp()]);
     const BoutReal bfL = 0.5 * (bf[ind] + bf[ind.xm()]);
+    const BoutReal bfT = 0.5 * (bf[ind] + bf[ind.zp()]);
+    const BoutReal bfB = 0.5 * (bf[ind] + bf[ind.zm()]);
     // Right side
     if ((mesh->lastX()) && (ind.x() == mesh->xend)) {
       // At right boundary in X
@@ -366,12 +368,12 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
     MC(s);
 
     if (vU > 0.0) {
-      BoutReal flux = vU * s.R; 
+      BoutReal flux = vU * s.R * bfT; 
       result[ind] += flux / (coord->J[ind] * coord->dz[ind]);
       result[kp] -= flux / (coord->J[kp] * coord->dz[kp]);
     }
     if (vD < 0.0) {
-      BoutReal flux = vD * s.L; 
+      BoutReal flux = vD * s.L * bfB; 
       result[ind] -= flux / (coord->J[ind] * coord->dz[ind]);
       result[km] += flux  / (coord->J[km] * coord->dz[km]);
     }
