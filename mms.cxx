@@ -1,4 +1,4 @@
-#include "field_factory.hxx"
+#include "bout/field_factory.hxx"
 
 #include "hermes-2.hxx"
 #include "div_ops.hxx"
@@ -237,9 +237,8 @@ int main(int argc, char** argv) {
       std::string outname = fmt::format(
           "{}/BOUT.{}.{}.nc",
           Options::root()["datadir"].withDefault<std::string>("data"), meshname, BoutComm::rank());
-      
-      bout::OptionsNetCDF(outname).write(dump);
-      
+
+      bout::OptionsIO::create(outname)->write(dump);
   };
   
   BoutFinalise()    ;
