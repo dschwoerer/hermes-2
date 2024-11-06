@@ -1415,19 +1415,6 @@ int Hermes::init(bool restarting) {
   // Magnetic field in boundary
   auto& Bxy = mesh->getCoordinates()->Bxy;
 
-  for (RangeIterator r = mesh->iterateBndryLowerY(); !r.isDone(); r++) {
-    for (int jz = 0; jz < mesh->LocalNz; jz++) {
-      Bxy.ydown()(r.ind, mesh->ystart - 1, jz) = Bxy(r.ind, mesh->ystart, jz);
-      Bxy(r.ind, mesh->ystart - 1, jz) = Bxy(r.ind, mesh->ystart, jz);
-    }
-  }
-  for (RangeIterator r = mesh->iterateBndryUpperY(); !r.isDone(); r++) {
-    for (int jz = 0; jz < mesh->LocalNz; jz++) {
-      Bxy.yup()(r.ind, mesh->yend + 1, jz) = Bxy(r.ind, mesh->yend, jz);
-      Bxy(r.ind, mesh->yend + 1, jz) = Bxy(r.ind, mesh->yend, jz);
-    }
-  }
-
   opt["Pn"].setConditionallyUsed();
   opt["Nn"].setConditionallyUsed();
   opt["NVn"].setConditionallyUsed();
@@ -2246,23 +2233,6 @@ int Hermes::rhs(BoutReal t) {
 
     // Ion parallel heat conduction
     kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
-
-    // Boundary conditions on heat conduction coefficients
-    for (RangeIterator r = mesh->iterateBndryLowerY(); !r.isDone(); r++) {
-      for (int jz = 0; jz < mesh->LocalNz; jz++) {
-        ASSERT0(fci_transform == false);
-        kappa_epar(r.ind, mesh->ystart - 1, jz) = kappa_epar(r.ind, mesh->ystart, jz);
-        kappa_ipar(r.ind, mesh->ystart - 1, jz) = kappa_ipar(r.ind, mesh->ystart, jz);
-      }
-    }
-
-    for (RangeIterator r = mesh->iterateBndryUpperY(); !r.isDone(); r++) {
-      for (int jz = 0; jz < mesh->LocalNz; jz++) {
-        ASSERT0(fci_transform == false);
-        kappa_epar(r.ind, mesh->yend + 1, jz) = kappa_epar(r.ind, mesh->yend, jz);
-        kappa_ipar(r.ind, mesh->yend + 1, jz) = kappa_ipar(r.ind, mesh->yend, jz);
-      }
-    }
   }
 
   if(currents){ nu.applyBoundary(t); }
@@ -3491,84 +3461,6 @@ int Hermes::rhs(BoutReal t) {
     // Recycling at the boundary
     TRACE("Neutral recycling fluxes");
     wall_flux = 0.0;
-
-    if (sheath_ydown) {
-      for (RangeIterator r = mesh->iterateBndryLowerY(); !r.isDone(); r++) {
-        // Calculate flux of ions into target from Ne and Vi boundary
-        // This calculation is supposed to be consistent with the flow
-        // of plasma from Div_par_FV(Ne, Ve)
-
-        for (int jz = 0; jz < mesh->LocalNz; jz++) {
-          BoutReal flux_ion =
-              -0.5 *
-              (Ne(r.ind, mesh->ystart, jz) + Ne(r.ind, mesh->ystart - 1, jz)) *
-              0.5 * (Ve(r.ind, mesh->ystart, jz) +
-                     Ve(r.ind, mesh->ystart - 1, jz)); // Flux through surface
-                                                       // [m^-2 s^-1], should be
-                                                       // positive since Ve <
-                                                       // 0.0
-
-          // Flow of neutrals inwards
-          BoutReal flow = frecycle * flux_ion *
-            (coord->J(r.ind, mesh->ystart, jz) +
-             coord->J(r.ind, mesh->ystart - 1, jz)) /
-            (sqrt(coord->g_22(r.ind, mesh->ystart, jz)) +
-             sqrt(coord->g_22(r.ind, mesh->ystart - 1, jz)));
-
-          // Rate of change of neutrals in final cell
-          BoutReal dndt = flow / (coord->J(r.ind, mesh->ystart, jz) *
-                                  coord->dy(r.ind, mesh->ystart, jz));
-
-          // Add mass, momentum and energy to the neutrals
-
-          neutrals->addDensity(r.ind, mesh->ystart, jz, dndt);
-          neutrals->addPressure(r.ind, mesh->ystart, jz,
-                                dndt * (3.5 / Tnorm)); // Franck-Condon energy
-          neutrals->addMomentum(r.ind, mesh->ystart, jz,
-                                dndt * neutral_vwall * sqrt(3.5 / Tnorm));
-
-          // Power deposited onto the wall due to surface recombination
-          wall_power(r.ind, mesh->ystart) += (13.6 / Tnorm) * dndt;
-        }
-      }
-    }
-
-    if (sheath_yup) {
-      for (RangeIterator r = mesh->iterateBndryUpperY(); !r.isDone(); r++) {
-        // Calculate flux of ions into target from Ne and Vi boundary
-        // This calculation is supposed to be consistent with the flow
-        // of plasma from FV::Div_par(Ne, Ve)
-
-        for (int jz = 0; jz < mesh->LocalNz; jz++) {
-          // Flux through surface [m^-2 s^-1], should be positive
-          BoutReal flux_ion =
-              frecycle * 0.5 *
-              (Ne(r.ind, mesh->yend, jz) + Ne(r.ind, mesh->yend + 1, jz)) *
-              0.5 * (Ve(r.ind, mesh->yend, jz) + Ve(r.ind, mesh->yend + 1, jz));
-
-          // Flow of neutrals inwards
-          BoutReal flow = flux_ion * (coord->J(r.ind, mesh->yend, jz) +
-                                      coord->J(r.ind, mesh->yend + 1, jz)) /
-            (sqrt(coord->g_22(r.ind, mesh->yend, jz)) +
-             sqrt(coord->g_22(r.ind, mesh->yend + 1, jz)));
-
-          // Rate of change of neutrals in final cell
-          BoutReal dndt =
-            flow / (coord->J(r.ind, mesh->yend, jz) * coord->dy(r.ind, mesh->yend, jz));
-
-          // Add mass, momentum and energy to the neutrals
-
-          neutrals->addDensity(r.ind, mesh->yend, jz, dndt);
-          neutrals->addPressure(r.ind, mesh->yend, jz,
-                                dndt * (3.5 / Tnorm)); // Franck-Condon energy
-          neutrals->addMomentum(r.ind, mesh->yend, jz,
-                                -dndt * neutral_vwall * sqrt(3.5 / Tnorm));
-
-          // Power deposited onto the wall due to surface recombination
-          wall_power(r.ind, mesh->yend) += (13.6 / Tnorm) * dndt;
-        }
-      }
-    }
   }
 
   //////////////////////////////////////////////////////////////
