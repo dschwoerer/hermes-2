@@ -1,8 +1,9 @@
 #include "bout/field_factory.hxx"
 
-#include "hermes-2.hxx"
-#include "div_ops.hxx"
 #include "bout/fv_ops.hxx"
+#include "div_ops.hxx"
+#include "hermes-2.hxx"
+#include <bout/version.hxx>
 
 std::vector<std::string> getAll(std::string str) {
   std::vector<std::string> out{};
